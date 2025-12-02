@@ -15,6 +15,7 @@
 
         <!-- 로그인 사용자 -->
         <a sec:authorize="isAuthenticated()" href="/logout">Logout</a>
+        <a sec:authorize="isAuthenticated()" th:href="@{/guestbook(userId=${#authentication.name})}" href="/guestbook">내 방명록</a>
     </div>
 </div>
 
