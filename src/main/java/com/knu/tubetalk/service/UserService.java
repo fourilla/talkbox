@@ -1,6 +1,9 @@
 package com.knu.tubetalk.service;
 
 import com.knu.tubetalk.dao.UserDao;
+import com.knu.tubetalk.dao.GuestbookDao;
+import com.knu.tubetalk.domain.Guestbook;
+import java.time.LocalDateTime;
 import com.knu.tubetalk.domain.User;
 import com.knu.tubetalk.dto.JoinRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -14,10 +17,12 @@ public class UserService {
 
     private final UserDao userDao;
     private final PasswordEncoder passwordEncoder;
+    private final GuestbookDao guestbookDao;
 
-    public UserService(UserDao userDao, PasswordEncoder passwordEncoder) {
+    public UserService(UserDao userDao, PasswordEncoder passwordEncoder, GuestbookDao guestbookDao) {
         this.userDao = userDao;
         this.passwordEncoder = passwordEncoder;
+        this.guestbookDao = guestbookDao;
     }
 
     public void register(JoinRequest dto) throws SQLException {
@@ -32,13 +37,19 @@ public class UserService {
             throw new IllegalArgumentException("이미 사용중인 이메일입니다.");
         }
     	
+        String userId = UUID.randomUUID().toString().substring(0, 29);
+        
         User user = new User(
-                UUID.randomUUID().toString().substring(0, 29),
+                userId,
                 dto.getLoginId(),
                 dto.getEmail(),
                 passwordEncoder.encode(dto.getPassword())
         );
         userDao.save(user);
+        
+        // 신규 사용자에 대한 방명록도 함께 생성
+        Guestbook newGuestbook = new Guestbook(userId, LocalDateTime.now());
+        guestbookDao.save(newGuestbook);
     }
 
     public User loadUserByLoginId(String loginId) throws SQLException {

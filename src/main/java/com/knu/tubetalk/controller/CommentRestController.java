@@ -97,7 +97,15 @@ public class CommentRestController {
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("로그인이 필요합니다.");
             }
 
+            // 1. 로그인 아이디 가져오기
             String loginId = authentication.getName();
+
+            // 2. [수정됨] DB에서 진짜 유저 정보 조회 (UUID 찾기)
+            User user = userService.loadUserByLoginId(loginId);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("존재하지 않는 사용자입니다.");
+            }
+            String realUserId = user.getUserId(); // 진짜 User_id (UUID)
 
             String content = requestData.get("content");
             if (content == null || content.trim().isEmpty()) {
@@ -105,11 +113,13 @@ public class CommentRestController {
             }
 
             UserComment comment = new UserComment();
-            comment.setUserId(loginId);
+            // 3. [수정됨] 진짜 User_id를 넣어야 함 (loginId 아님!)
+            comment.setUserId(realUserId); 
             comment.setContent(content.trim());
 
             commentService.addGuestbookComment(guestbookId, comment);
             return ResponseEntity.ok("방명록 댓글이 등록되었습니다.");
+
         } catch (SQLException e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("댓글 등록에 실패했습니다.");
