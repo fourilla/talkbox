@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${video.title}">비디오 제목</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        .video-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .video-info { margin-bottom: 30px; }
+        .video-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
+        .video-stats { color: #666; }
+        .comments-container { border-top: 1px solid #ddd; padding-top: 20px; }
+        .comment-list { min-height: 200px; }
+        .comment-item { padding: 15px 0; border-bottom: 1px solid #eee; }
+        .comment-count { color: #ff0000; font-weight: bold; }
+        .loading { color: #999; text-align: center; padding: 40px; }
+    </style>
+</head>
+<body>
+    <div class="video-container">
+        <!-- 비디오 정보 -->
+        <div class="video-info" th:if="${video}">
+            <div class="video-title" th:text="${video.title}">비디오 제목</div>
+            <div class="video-stats">
+                좋아요: <span th:text="${video.likeCount}"></span> | 
+                싫어요: <span th:text="${video.dislikeCount}"></span> | 
+                댓글 수: <span class="comment-count" th:text="${video.commentCount}">0</span>
+            </div>
+            <div th:if="${thread}">
+                스레드 생성일: <span th:text="${thread.createdAt}"></span> | 
+                참여자 수: <span th:text="${thread.participantCount}">0</span>
+            </div>
+        </div>
+
+        <!-- 댓글 영역 -->
+        <div class="comments-container">
+            <h3>댓글 <span id="commentCount" class="comment-count">0</span></h3>
+            <div id="commentList" class="comment-list">
+                <div class="loading">댓글을 불러오는 중...</div>
+            </div>
+            
+            <!-- 댓글 작성 폼 추가 -->
+      <div style="margin-top:20px;">
+        <textarea id="commentInput" placeholder="댓글을 작성하세요" style="width:100%; height:80px;"></textarea>
+        <button id="submitComment" style="margin-top:5px;">댓글 등록</button>
+      </div>
+    </div>
+  </div>
+
+     <script th:inline="javascript">
+    /*<![CDATA[*/
+    const videoId = /*[[${video.videoId}]]*/ '';
+    const apiBase = '/api/comments/thread/' + videoId;
+
+    window.onload = function() {
+      loadComments();
+
+      // 댓글 등록 버튼 클릭 핸들러
+      document.getElementById('submitComment').onclick = async function() {
+        const content = document.getElementById('commentInput').value.trim();
+        if (!content) {
+          alert('댓글 내용을 입력해주세요.');
+          return;
+        }
+
+        try {
+          await axios.post(apiBase, {
+            content: content
+          });
+          alert('댓글이 등록되었습니다.');
+          document.getElementById('commentInput').value = ''; // 입력창 초기화
+          loadComments(); // 댓글 목록 갱신
+        } catch (error) {
+          console.error('댓글 등록 실패:', error);
+          alert('댓글 등록에 실패했습니다.');
+        }
+      };
+    };
+
+    async function loadComments() {
+      try {
+        const response = await axios.get(apiBase);
+        const comments = response.data;
+        displayComments(comments);
+        document.getElementById('commentCount').textContent = comments.length;
+      } catch (error) {
+        console.error('댓글 로드 실패:', error);
+        document.getElementById('commentList').innerHTML =
+          '<div style="color:red; text-align:center;">댓글을 불러올 수 없습니다.</div>';
+      }
+    }
+
+    function displayComments(comments) {
+      const container = document.getElementById('commentList');
+      if (comments.length === 0) {
+        container.innerHTML = '<div style="color:#999; text-align:center;">아직 댓글이 없습니다.</div>';
+        return;
+      }
+      container.innerHTML = comments.map(comment => `
+        <div class="comment-item">
+          <strong>${comment.userId}</strong>
+          <small style="color:#999;">${new Date(comment.createdAt).toLocaleString('ko-KR')}</small>
+          <p>${comment.content}</p>
+          <div style="font-size:12px; color:#666;">
+            좋아요: ${comment.likeCount} | 싫어요: ${comment.dislikeCount}
+          </div>
+        </div>
+      `).join('');
+    }
+    /*]]>*/
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>회원 탈퇴 테스트</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .warning { color: red; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2>🗑️ 회원 탈퇴</h2>
+
+    <p class="warning">탈퇴하시면 계정과 모든 데이터는 영구적으로 삭제되며 복구할 수 없습니다.</p>
+
+    <form th:action="@{/delete}" method="post" id="deleteForm">
+        
+
+        <p>
+            <input type="checkbox" id="confirm" required> 
+            <label for="confirm">위험을 감수하고 탈퇴에 **동의**합니다. (체크 필수)</label>
+        </p>
+        
+        <button type="submit" onclick="return confirmDeletion();">계정 영구 삭제</button>
+    </form>
+
+    <br>
+    <a href="/main">메인 페이지로 돌아가기</a>
+    
+    <script>
+        function confirmDeletion() {
+            // JavaScript로 최종 확인 메시지를 띄웁니다.
+            return confirm('⚠️ 마지막 경고입니다. 정말로 계정을 삭제하시겠습니까?');
+        }
+    </script>
+
+</body>
+</html>
