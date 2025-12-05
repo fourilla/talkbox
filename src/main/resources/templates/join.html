@@ -3,55 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <title>회원가입</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+        }
+        .container {
+            background-color: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 350px;
+            text-align: center;
+        }
+        h2 {
+            margin-top: 0;
+            margin-bottom: 30px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .links {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-around;
+        }
+        a {
+            color: #007bff;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
+        <h2>회원가입</h2>
+        <form id="joinForm">
+            <input type="text" id="username" placeholder="아이디" required>
+            <input type="email" id="email" placeholder="이메일" required>
+            <input type="password" id="password" placeholder="비밀번호" required>
+            <button type="button" onclick="join()">회원가입</button>
+        </form>
+        <div class="links">
+            <a href="/login">로그인 페이지로</a>
+            <a href="/main">메인으로</a>
+        </div>
+    </div>
 
-<h2>회원가입</h2>
+    <script>
+    function join() {
+        const data = {
+            loginId: document.getElementById("username").value,
+            email: document.getElementById("email").value,
+            password: document.getElementById("password").value
+        };
 
-<form id="joinForm">
-    <label>아이디: </label>
-    <input type="text" id="username"><br><br>
-
-    <label>이메일: </label>
-    <input type="email" id="email"><br><br>
-
-    <label>비밀번호: </label>
-    <input type="password" id="password"><br><br>
-
-    <button type="button" onclick="join()">회원가입</button>
-</form>
-
-<script>
-function join() {
-    const data = {
-        loginId: document.getElementById("username").value,
-        email: document.getElementById("email").value,
-        password: document.getElementById("password").value
-    };
-
-    fetch("/join", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-    })
-    .then(res => {
-        if (res.ok) {
-            alert("회원가입이 성공적으로 완료되었습니다.");
-            window.location.href = "/login";
-        } else {
-            return res.text().then(msg => alert(msg));
-        }
-    })
-    .catch(error => {
-        alert("회원가입 중 오류가 발생했습니다: " + error.message);
-    });
-}
-</script>
-
-<br>
-<a href="/login">로그인 페이지로</a>
-<br>
-<a href="/main">메인으로</a>
-
+        fetch("/join", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        })
+        .then(res => {
+            if (res.ok) {
+                alert("회원가입이 성공적으로 완료되었습니다.");
+                window.location.href = "/login";
+            } else {
+                return res.text().then(msg => alert(msg));
+            }
+        })
+        .catch(error => {
+            alert("회원가입 중 오류가 발생했습니다: " + error.message);
+        });
+    }
+    </script>
 </body>
 </html>

@@ -109,6 +109,28 @@ public class ReplyDao {
         }
     }
 
+    public void updateLikeCount(String replyId, int delta) throws SQLException {
+        String sql = "UPDATE REPLY SET Like_count = GREATEST(0, Like_count + ?) WHERE Reply_id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, delta);
+            ps.setString(2, replyId);
+            ps.executeUpdate();
+        }
+    }
+
+    public void updateDislikeCount(String replyId, int delta) throws SQLException {
+        String sql = "UPDATE REPLY SET Dislike_count = GREATEST(0, Dislike_count + ?) WHERE Reply_id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, delta);
+            ps.setString(2, replyId);
+            ps.executeUpdate();
+        }
+    }
+
     private Reply mapRow(ResultSet rs) throws SQLException {
         return new Reply(
                 rs.getString("Reply_id"),

@@ -37,6 +37,8 @@ public class SecurityConfig {
                         .requestMatchers("/thread/**", "/guestbook/**").permitAll()
                         .requestMatchers("/api/comments/thread/**", "/api/comments/guestbook/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/comments/*/replies").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/comments/*/reaction").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/comments/*/reaction").authenticated()
                         .requestMatchers(HttpMethod.POST, "/join").permitAll()
                         .requestMatchers("/login", "/join").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()

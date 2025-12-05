@@ -3,87 +3,397 @@
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
-    <title>Main</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TubeTalk - YouTube 토론 플랫폼</title>
     <style>
-        /* 레이아웃 스타일 추가 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        /* 네비게이션 바 */
+        .navbar {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .logo:hover {
+            transform: scale(1.05);
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-links a:hover {
+            background-color: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+        
+        /* 메인 컨테이너 */
         .container {
             display: flex;
-            height: 80vh; /* 화면 높이 사용 */
+            flex-direction: column;
+            max-width: 1400px;
+            margin: 40px auto;
+            padding: 0 20px;
+            gap: 30px;
         }
+        
+        /* 검색 섹션 */
         .main-content {
-            flex: 3; /* 화면의 3/4 차지 */
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 40px 60px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
         }
+        
+        .main-content h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .main-content p {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        
+        .search-box {
+            width: 100%;
+            max-width: 100%;
+            position: relative;
+        }
+        
+        #searchInput {
+            width: 100%;
+            padding: 20px 70px 20px 25px;
+            font-size: 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 50px;
+            outline: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        #searchInput:focus {
+            border-color: #667eea;
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .search-button {
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .search-button:hover {
+            transform: translateY(-50%) scale(1.05);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+        
+        .error-message {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c62828;
+            max-width: 600px;
+            width: 100%;
+        }
+        
+        /* 인기글 섹션 */
         .side-panel {
-            flex: 1; /* 화면의 1/4 차지 */
-            border-left: 1px solid #ddd;
-            padding: 20px;
-            background-color: #f9f9f9;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            max-height: 500px;
+            overflow-y: auto;
         }
+        
+        .side-panel h3 {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .side-panel .subtitle {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 20px;
+        }
+        
         .rank-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
             margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #eee;
+            background: white;
+            border-radius: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 2px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            text-decoration: none;
         }
-        .rank-title {
+        
+        .rank-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+            border-color: #667eea;
+        }
+        
+        .rank-number {
+            font-size: 20px;
             font-weight: bold;
-            font-size: 14px;
+            color: #667eea;
+            min-width: 30px;
+        }
+        
+        .rank-thumbnail {
+            width: 120px;
+            height: 90px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+            background-color: #f0f0f0;
+        }
+        
+        .rank-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .rank-title {
+            font-weight: 600;
+            font-size: 16px;
             text-decoration: none;
             color: #333;
-            display: block; /* 줄바꿈 */
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
         }
+        
+        .rank-item:hover .rank-title {
+            color: #667eea;
+        }
+        
+        .rank-item:hover .rank-number {
+            color: #764ba2;
+            transform: scale(1.1);
+        }
+        
         .rank-stats {
-            font-size: 12px;
-            color: #ff5722;
+            font-size: 14px;
+            color: #666;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .rank-stats .comment-icon {
+            color: #667eea;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        
+        /* 반응형 디자인 */
+        @media (max-width: 968px) {
+            .main-content {
+                padding: 30px 20px;
+            }
+            
+            .main-content h1 {
+                font-size: 28px;
+            }
+            
+            .side-panel {
+                max-height: 400px;
+            }
+            
+            .rank-thumbnail {
+                width: 100px;
+                height: 75px;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .navbar {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .main-content h1 {
+                font-size: 32px;
+            }
+            
+            #searchInput {
+                font-size: 16px;
+                padding: 15px 50px 15px 15px;
+            }
+            
+            .rank-item {
+                padding: 12px;
+                gap: 10px;
+            }
+            
+            .rank-thumbnail {
+                width: 80px;
+                height: 60px;
+            }
+            
+            .rank-number {
+                font-size: 18px;
+                min-width: 25px;
+            }
+            
+            .rank-title {
+                font-size: 14px;
+            }
+            
+            .rank-stats {
+                font-size: 12px;
+            }
         }
     </style>
 </head>
 <body>
-
-<div style="display:flex; justify-content:flex-end; padding:20px;">
-    <div>
-        <a sec:authorize="isAnonymous()" href="/login">Login</a>
-        <a sec:authorize="isAuthenticated()" href="/logout">Logout</a>
-        <a sec:authorize="isAuthenticated()" th:href="@{/guestbook(loginId=${#authentication.name})}" href="/guestbook">내 방명록</a>
-        <a sec:authorize="isAuthenticated()" href="/userInfoChange" style="margin-left:10px;">정보수정</a>
-    </div>
-</div>
-
-<div class="container">
-    <div class="main-content">
-        <h2>Search</h2>
-        
-        <div th:if="${errorMessage}" style="color:red; margin-bottom:20px;">
-            <span th:text="${errorMessage}"></span>
+    <!-- 네비게이션 바 -->
+    <nav class="navbar">
+        <a href="/main" class="logo">🎬 TubeTalk</a>
+        <div class="nav-links">
+            <a sec:authorize="isAnonymous()" href="/login">로그인</a>
+            <a sec:authorize="isAuthenticated()" href="/logout">로그아웃</a>
+            <a sec:authorize="isAuthenticated()" th:href="@{/guestbook(loginId=${#authentication.name})}">내 방명록</a>
+            <a sec:authorize="isAuthenticated()" href="/userInfoChange">정보수정</a>
         </div>
-        
-        <input id="searchInput" type="text" placeholder="Enter keyword or VideoID"
-               style="width:400px; height:40px; font-size:18px; padding:5px;">
+    </nav>
 
-        <button onclick="performSearch()" style="margin-top:20px; width:150px; height:40px; font-size:16px;">
-            Search
-        </button>
-    </div>
-
-    <div class="side-panel">
-        <h3>🔥 지금 뜨는 토론</h3>
-        <p style="font-size:12px; color:gray;">(최근 24시간 댓글 기준)</p>
-        
-        <div th:if="${#lists.isEmpty(trending)}">
-            <p>데이터가 없습니다.</p>
+    <!-- 메인 컨테이너 -->
+    <div class="container">
+        <!-- 검색 섹션 -->
+        <div class="main-content">
+            <h1>YouTube 토론 시작하기</h1>
+            <p>영상 ID나 키워드를 입력하여 토론에 참여하세요</p>
+            
+            <div th:if="${errorMessage}" class="error-message">
+                <span th:text="${errorMessage}"></span>
+            </div>
+            <div th:if="${param.error}" class="error-message">
+                <span th:if="${param.error == 'invalid_video'}">존재하지 않는 비디오 ID입니다.</span>
+                <span th:if="${param.error == 'db_error'}">데이터베이스 오류가 발생했습니다.</span>
+                <span th:if="${param.error == 'unknown'}">오류가 발생했습니다. 다시 시도해주세요.</span>
+            </div>
+            
+            <div class="search-box">
+                <input id="searchInput" type="text" placeholder="YouTube URL, Video ID 또는 키워드를 입력하세요" 
+                       onkeypress="if(event.key === 'Enter') performSearch()">
+                <button class="search-button" onclick="performSearch()">검색</button>
+            </div>
         </div>
 
-        <div th:each="item, stat : ${trending}" class="rank-item">
-            <a th:href="@{'/thread?v=' + ${item.videoId}}" class="rank-title">
-                <span th:text="${stat.count} + '. ' + ${item.title}">1. 제목</span>
+        <!-- 인기글 섹션 -->
+        <div class="side-panel">
+            <h3>🔥 지금 뜨는 토론</h3>
+            <p class="subtitle">(최근 24시간 댓글 기준)</p>
+            
+            <div th:if="${#lists.isEmpty(trending)}" class="empty-state">
+                <p>아직 인기 토론이 없습니다.<br>첫 번째 토론을 시작해보세요! 🎉</p>
+            </div>
+
+            <a th:each="item, stat : ${trending}" th:href="@{'/thread?v=' + ${item.videoId}}" class="rank-item">
+                <span class="rank-number" th:text="${stat.count}">1</span>
+                <img th:src="@{'https://img.youtube.com/vi/' + ${item.videoId} + '/mqdefault.jpg'}" 
+                     alt="썸네일" 
+                     class="rank-thumbnail"
+                     onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'90\'%3E%3Crect width=\'120\' height=\'90\' fill=\'%23f0f0f0\'/%3E%3Ctext x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\' fill=\'%23999\'%3E썸네일%3C/text%3E%3C/svg%3E'">
+                <div class="rank-content">
+                    <div class="rank-title" th:text="${item.title}">제목</div>
+                    <div class="rank-stats">
+                        <span class="comment-icon">💬</span>
+                        <span th:text="${item.commentCount} + '개 댓글'">0개 댓글</span>
+                    </div>
+                </div>
             </a>
-            <span class="rank-stats">💬 댓글 <span th:text="${item.commentCount}">0</span>개</span>
         </div>
     </div>
-</div>
 
 <script>
 // 유튜브 URL에서 VideoID 추출

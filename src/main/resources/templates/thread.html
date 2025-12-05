@@ -3,83 +3,571 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${video.title}">비디오 제목</title>
+    <title th:text="${video.title}">비디오 제목 - TubeTalk</title>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
-        .video-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .video-info { margin-bottom: 30px; }
-        .video-title { font-size: 24px; font-weight: bold; margin-bottom: 10px; }
-        .video-stats { color: #666; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         
-        .comments-container { border-top: 1px solid #ddd; padding-top: 20px; }
-        .comment-list { min-height: 200px; }
-        .comment-item { padding: 15px 0; border-bottom: 1px solid #eee; }
-        .reply-item { 
-            padding: 10px 0; 
-            margin-left: 40px; 
-            border-bottom: 1px solid #f9f9f9; 
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        /* 네비게이션 바 */
+        .navbar {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        
+        .logo:hover {
+            transform: scale(1.05);
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-links a:hover {
+            background-color: #667eea;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+        
+        /* 비디오 섹션 */
+        .video-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        .video-title {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            line-height: 1.4;
+            color: #333;
+        }
+        
+        .video-stats {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .video-stats span {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .comment-count {
+            color: #ff0000;
+            font-weight: bold;
+        }
+        
+        .video-wrapper {
+            position: relative;
+            padding-bottom: 56.25%;
+            height: 0;
+            overflow: hidden;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        
+        .video-wrapper iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+        
+        /* 댓글 섹션 */
+        .comments-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        
+        .comments-section h3 {
+            font-size: 20px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .page-control {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .page-control input {
+            width: 60px;
+            padding: 8px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .page-control button {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .page-control button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        .comment-list {
+            min-height: 200px;
+        }
+        
+        .comment-item {
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 12px;
+        }
+        
+        .reply-item {
+            padding: 12px;
+            margin-left: 40px;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #f9f9f9;
             background-color: #fafafa;
             border-radius: 5px;
-            padding-left: 10px;
+            display: flex;
+            gap: 12px;
         }
-        .comment-count { color: #ff0000; font-weight: bold; }
         
-        .reply-form { margin-top: 10px; display: none; margin-left: 40px; }
-        .reply-form.active { display: block; }
-
-        /* 페이지네이션 스타일 */
+        .reply-item .comment-avatar {
+            width: 32px;
+            height: 32px;
+            font-size: 14px;
+        }
+        
+        .reply-item .reaction-buttons {
+            margin-top: 8px;
+        }
+        
+        .comment-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .comment-body {
+            flex: 1;
+        }
+        
+        .comment-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .comment-author {
+            font-weight: 600;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .comment-date {
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .comment-content {
+            color: #333;
+            line-height: 1.5;
+            margin-bottom: 8px;
+        }
+        
+        .edit-mode {
+            display: none;
+        }
+        
+        .edit-mode.active {
+            display: block;
+        }
+        
+        .edit-textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 60px;
+            margin-bottom: 8px;
+        }
+        
+        .edit-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .edit-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .edit-buttons button {
+            padding: 5px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .comment-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        
+        .comment-actions a {
+            font-size: 11px;
+            color: #999;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+        
+        .comment-actions a:hover {
+            color: #667eea;
+            text-decoration: underline;
+        }
+        
+        .btn-reply {
+            background-color: #28a745;
+            color: white;
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+        
+        .btn-reply:hover {
+            background-color: #218838;
+        }
+        
+        .reply-link {
+            font-size: 11px;
+            color: #999;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+        
+        .reply-link:hover {
+            color: #667eea;
+            text-decoration: underline;
+        }
+        
+        .reaction-buttons {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 8px;
+        }
+        
+        .reaction-btn {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            padding: 3px 8px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s ease;
+        }
+        
+        .reaction-btn:hover {
+            background: #f0f0f0;
+        }
+        
+        .reaction-btn.liked {
+            background: #e3f2fd;
+            border-color: #2196f3;
+            color: #2196f3;
+        }
+        
+        .reaction-btn.disliked {
+            background: #ffebee;
+            border-color: #f44336;
+            color: #f44336;
+        }
+        
+        .reply-form {
+            margin-top: 0;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out, margin-top 0.3s ease-out;
+            visibility: hidden;
+        }
+        
+        .reply-form.active {
+            margin-top: 12px;
+            max-height: 300px;
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .reply-form-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .reply-form textarea {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-bottom: 1px solid #ddd;
+            background: transparent;
+            font-size: 14px;
+            resize: none;
+            min-height: 24px;
+            max-height: 100px;
+            transition: border-color 0.2s ease;
+        }
+        
+        .reply-form textarea:focus {
+            outline: none;
+            border-bottom-color: #667eea;
+        }
+        
+        .reply-form .btn-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        
+        .reply-form .btn-reply,
+        .reply-form .btn-edit {
+            padding: 6px 16px;
+            border: none;
+            border-radius: 18px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+        }
+        
+        .reply-form .btn-edit {
+            background-color: transparent;
+            color: #606060;
+        }
+        
+        .reply-form .btn-edit:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .reply-form .btn-reply {
+            background-color: #065fd4;
+            color: white;
+        }
+        
+        .reply-form .btn-reply:hover {
+            background-color: #0650c0;
+        }
+        
+        .reply-form .btn-reply:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        /* 페이지네이션 */
         .pagination {
             display: flex;
             justify-content: center;
             margin-top: 20px;
             gap: 5px;
         }
+        
         .page-btn {
             border: 1px solid #ddd;
             background-color: white;
-            padding: 5px 10px;
+            padding: 8px 12px;
             cursor: pointer;
-            border-radius: 4px;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-weight: 500;
         }
-        .page-btn:hover { background-color: #f0f0f0; }
+        
+        .page-btn:hover {
+            background-color: #f0f0f0;
+            transform: translateY(-2px);
+        }
+        
         .page-btn.active {
-            background-color: #ff0000; /* 유튜브 레드 */
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            border-color: #ff0000;
+            border-color: transparent;
+        }
+        
+        /* 댓글 작성 폼 */
+        .comment-form {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+        
+        .comment-form textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .comment-form textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .comment-form button {
+            margin-top: 10px;
+            padding: 8px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .comment-form button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
         }
     </style>
 </head>
 <body>
-    <!-- 상단 네비게이션 -->
-    <div style="display:flex; justify-content:flex-end; padding:20px;">
-        <div>
-            <a sec:authorize="isAnonymous()" href="/login">Login</a>
-            <a sec:authorize="isAuthenticated()" href="/logout">Logout</a>
-            <a href="/main" style="margin-left:10px;">메인으로</a>
+    <!-- 네비게이션 바 -->
+    <nav class="navbar">
+        <a href="/main" class="logo">🎬 TubeTalk</a>
+        <div class="nav-links">
+            <a sec:authorize="isAnonymous()" href="/login">로그인</a>
+            <a sec:authorize="isAuthenticated()" href="/logout">로그아웃</a>
+            <a sec:authorize="isAuthenticated()" th:href="@{/guestbook(loginId=${#authentication.name})}">내 방명록</a>
+            <a sec:authorize="isAuthenticated()" href="/userInfoChange">정보수정</a>
         </div>
-    </div>
-    
-    <div class="video-container">
-        <!-- 비디오 정보 -->
-        <div class="video-info" th:if="${video}">
+    </nav>
+
+    <div class="container">
+        <!-- 비디오 섹션 -->
+        <div class="video-section" th:if="${video}">
             <div class="video-title" th:text="${video.title}">비디오 제목</div>
             <div class="video-stats">
-                좋아요: <span th:text="${video.likeCount}"></span> | 
-                싫어요: <span th:text="${video.dislikeCount}"></span> | 
-                댓글 수: <span class="comment-count" th:text="${video.commentCount}">0</span>
+                <span>👍 좋아요: <strong th:text="${video.likeCount}">0</strong></span>
+                <span>👎 싫어요: <strong th:text="${video.dislikeCount}">0</strong></span>
+                <span>💬 댓글 수: <strong class="comment-count" th:text="${video.commentCount}">0</strong></span>
             </div>
-            <div style="position:relative; padding-bottom:56.25%; height:0; overflow:hidden; max-width:100%; margin-top:20px;">
-                <iframe th:src="'https://www.youtube.com/embed/' + ${video.videoId}" style="position:absolute; top:0; left:0; width:100%; height:100%; border:0;" allowfullscreen></iframe>
+            <div class="video-wrapper">
+                <iframe th:src="'https://www.youtube.com/embed/' + ${video.videoId}" allowfullscreen></iframe>
             </div>
         </div>
 
-        <!-- 댓글 영역 -->
-        <div class="comments-container">
-            <h3>댓글</h3>
+        <!-- 댓글 섹션 -->
+        <div class="comments-section">
+            <h3>💬 댓글</h3>
             
-            <!-- 페이지 이동용 입력창 -->
-            <div style="margin-bottom: 10px; text-align: right;">
-                <input type="number" id="pageInput" placeholder="페이지" style="width: 50px;" min="1">
+            <!-- 페이지 이동 -->
+            <div class="page-control">
+                <input type="number" id="pageInput" placeholder="페이지" min="1">
                 <button onclick="goToInputPage()">이동</button>
             </div>
 
@@ -87,16 +575,18 @@
                 <div class="loading">댓글을 불러오는 중...</div>
             </div>
             
-            <!-- 페이지네이션 버튼 영역 -->
+            <!-- 페이지네이션 -->
             <div id="pagination" class="pagination"></div>
             
             <!-- 댓글 작성 폼 -->
-            <div sec:authorize="isAuthenticated()" style="margin-top:20px;">
-                <textarea id="commentInput" placeholder="댓글을 작성하세요" style="width:100%; height:80px;"></textarea>
-                <button id="submitComment" style="margin-top:5px;">댓글 등록</button>
+            <div sec:authorize="isAuthenticated()" class="comment-form">
+                <textarea id="commentInput" placeholder="댓글을 작성하세요..."></textarea>
+                <button id="submitComment">댓글 등록</button>
             </div>
-            <div sec:authorize="isAnonymous()" style="margin-top:20px; color:#666;">
-                댓글을 작성하려면 <a href="/login">로그인</a>이 필요합니다.
+            <div sec:authorize="isAnonymous()" class="comment-form">
+                <p style="text-align: center; color: #666;">
+                    댓글을 작성하려면 <a href="/login" style="color: #667eea; font-weight: 600;">로그인</a>이 필요합니다.
+                </p>
             </div>
         </div>
     </div>
@@ -115,12 +605,15 @@
 
         document.getElementById('submitComment').onclick = async function() {
             const content = document.getElementById('commentInput').value.trim();
-            if (!content) { alert('내용을 입력해주세요.'); return; }
+            if (!content) { 
+                alert('내용을 입력해주세요.'); 
+                return; 
+            }
             try {
                 await axios.post(apiBase, { content: content });
                 alert('등록되었습니다.');
                 document.getElementById('commentInput').value = '';
-                loadComments(1); // 등록 후 첫 페이지로 이동
+                loadComments(1);
             } catch (error) {
                 alert('등록 실패');
             }
@@ -137,16 +630,13 @@
         }
     }
 
-    // ★ 수정된 loadComments 함수
     async function loadComments(page) {
         try {
             const response = await axios.get(apiBase, { params: { page: page } });
             
-            // ★ 중요: PageResponse 객체에서 내용물(content) 꺼내기
             const data = response.data;
             const items = data.content; 
             
-            // 페이지 정보 업데이트
             currentPage = data.currentPage;
             totalPages = data.totalPages;
             
@@ -154,8 +644,8 @@
             renderPagination(currentPage, totalPages);
             
         } catch (error) {
-            console.error('댓글 로드 실패:', error); // printStackTrace() 대신 console.error 사용
-            document.getElementById('commentList').innerHTML = '<div style="color:red; text-align:center;">댓글을 불러오지 못했습니다.</div>';
+            console.error('댓글 로드 실패:', error);
+            document.getElementById('commentList').innerHTML = '<div class="empty-state"><p style="color:red">댓글을 불러오지 못했습니다.</p></div>';
         }
     }
 
@@ -165,7 +655,6 @@
         
         if (total <= 1) return;
 
-        // [이전] 버튼
         if (current > 1) {
             const prevBtn = document.createElement('button');
             prevBtn.textContent = '이전';
@@ -174,7 +663,6 @@
             pagination.appendChild(prevBtn);
         }
 
-        // 페이지 번호 버튼 (최대 5개 표시 로직)
         let startPage = Math.max(1, current - 2);
         let endPage = Math.min(total, current + 2);
         
@@ -191,7 +679,6 @@
             pagination.appendChild(btn);
         }
 
-        // [다음] 버튼
         if (current < total) {
             const nextBtn = document.createElement('button');
             nextBtn.textContent = '다음';
@@ -206,7 +693,7 @@
         container.innerHTML = '';
         
         if (!items || items.length === 0) {
-            container.innerHTML = '<div style="color:#999; text-align:center;">아직 댓글이 없습니다.</div>';
+            container.innerHTML = '<div class="empty-state"><p>아직 댓글이 없습니다.<br>첫 번째 댓글을 작성해보세요! 🎉</p></div>';
             return;
         }
 
@@ -222,73 +709,325 @@
                 div.id = `reply-${item.id}`;
             }
 
+            const authorName = escapeHtml(item.loginId || '알 수 없음');
+            const firstLetter = authorName.charAt(0).toUpperCase();
+            
             let html = `
-                <div style="display:flex; justify-content:space-between;">
-                    <div>
-                        <strong>${escapeHtml(item.loginId || '알 수 없음')}</strong>
-                        <small style="color:#999; margin-left:5px;">${new Date(item.createdAt).toLocaleString('ko-KR')}</small>
+                <div class="comment-avatar">${firstLetter}</div>
+                <div class="comment-body">
+                    <div class="comment-header">
+                        <span class="comment-author">${authorName}</span>
+                        <span class="comment-date" style="margin-left: 8px;">${new Date(item.createdAt).toLocaleString('ko-KR')}</span>
                     </div>
+                    <div class="comment-content" id="${item.type === 'COMMENT' ? 'comment' : 'reply'}-content-${item.id}">${escapeHtml(item.content)}</div>
+                    <div class="reaction-buttons">
+                        <button class="reaction-btn" id="like-btn-${item.id}" onclick="toggleReaction('${item.id}', 'L')">
+                            👍 <span id="like-count-${item.id}">${item.likeCount || 0}</span>
+                        </button>
+                        <button class="reaction-btn" id="dislike-btn-${item.id}" onclick="toggleReaction('${item.id}', 'D')">
+                            👎 <span id="dislike-count-${item.id}">${item.dislikeCount || 0}</span>
+                        </button>
+                    </div>
+                    ${item.type === 'COMMENT' && currentLoginId ? `<div style="margin-top: 5px;"><a class="reply-link" onclick="toggleReplyForm('${item.id}')">답글달기</a></div>` : ''}
+                    ${isOwner ? `
+                        <div class="comment-actions">
+                            <a onclick="edit${item.type === 'COMMENT' ? 'Comment' : 'Reply'}('${item.id}')">수정</a>
+                            <a onclick="delete${item.type === 'COMMENT' ? 'Comment' : 'Reply'}('${item.id}')">삭제</a>
+                        </div>
+                    ` : ''}
+                    ${item.type === 'COMMENT' && currentLoginId ? `
+                        <div class="reply-form" id="reply-form-${item.id}">
+                            <div class="comment-avatar" style="width: 32px; height: 32px; font-size: 14px;">${currentLoginId.charAt(0).toUpperCase()}</div>
+                            <div class="reply-form-content">
+                                <textarea id="reply-input-${item.id}" placeholder="답글 추가..."></textarea>
+                                <div class="btn-group">
+                                    <button class="btn-edit" onclick="toggleReplyForm('${item.id}')">취소</button>
+                                    <button class="btn-reply" onclick="submitReply('${item.id}')">답글</button>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
             `;
             
-            if (isOwner) {
-                const typeStr = item.type === 'COMMENT' ? 'Comment' : 'Reply';
-                html += `
-                    <div>
-                        <button onclick="edit${typeStr}('${item.id}')" style="font-size:11px;">수정</button>
-                        <button onclick="delete${typeStr}('${item.id}')" style="font-size:11px;">삭제</button>
-                    </div>
-                `;
-            }
-            html += `</div>`;
-            html += `<div style="margin-top:5px;">${escapeHtml(item.content)}</div>`;
-            
-            if (item.type === 'COMMENT') {
-                html += `
-                    <div style="font-size:12px; color:#666; margin-top:5px;">
-                        좋아요: ${item.likeCount}
-                        ${currentLoginId ? `<button onclick="toggleReplyForm('${item.id}')" style="margin-left:10px;">답글달기</button>` : ''}
-                    </div>
-                    <div class="reply-form" id="reply-form-${item.id}">
-                        <textarea id="reply-input-${item.id}" placeholder="답글 내용" style="width:90%; height:50px;"></textarea>
-                        <button onclick="submitReply('${item.id}')" style="margin-top:3px;">등록</button>
-                        <button onclick="toggleReplyForm('${item.id}')">취소</button>
-                    </div>
-                `;
-            }
             div.innerHTML = html;
             
             if (isOwner) {
-                const editBtn = div.querySelector('button');
-                if(editBtn) editBtn.dataset.content = item.content;
+                const editLink = div.querySelector('a[onclick*="edit"]');
+                if(editLink) editLink.dataset.content = item.content;
             }
             container.appendChild(div);
+            
+            loadUserReaction(item.id);
         });
     }
+    
+    async function loadUserReaction(targetId) {
+        if (!currentLoginId) return;
+        
+        try {
+            const response = await axios.get(`/api/comments/${targetId}/reaction`);
+            const userReaction = response.data.userReaction;
+            
+            // 정확한 요소 선택 - 해당 댓글/답글 컨테이너 내에서만 찾기
+            const commentDiv = document.getElementById(`comment-${targetId}`);
+            const replyDiv = document.getElementById(`reply-${targetId}`);
+            const container = commentDiv || replyDiv;
+            
+            if (!container) return;
+            
+            const likeBtn = container.querySelector(`#like-btn-${targetId}`);
+            const dislikeBtn = container.querySelector(`#dislike-btn-${targetId}`);
+            
+            if (likeBtn) {
+                likeBtn.classList.remove('liked');
+            }
+            if (dislikeBtn) {
+                dislikeBtn.classList.remove('disliked');
+            }
+            
+            if (userReaction === 'L' && likeBtn) {
+                likeBtn.classList.add('liked');
+            } else if (userReaction === 'D' && dislikeBtn) {
+                dislikeBtn.classList.add('disliked');
+            }
+        } catch (error) {
+            console.error('사용자 반응 로드 실패:', error);
+        }
+    }
+    
+    async function toggleReaction(targetId, reactionType) {
+        if (!currentLoginId) {
+            alert('로그인이 필요합니다.');
+            return;
+        }
+        
+        try {
+            const response = await axios.post(`/api/comments/${targetId}/reaction`, {
+                reactionType: reactionType
+            });
+            
+            if (response.data.success) {
+                // 해당 항목만 업데이트 (전체 페이지 다시 로드하지 않음)
+                const commentDiv = document.getElementById(`comment-${targetId}`);
+                const replyDiv = document.getElementById(`reply-${targetId}`);
+                const container = commentDiv || replyDiv;
+                
+                if (container) {
+                    // 카운트 업데이트
+                    const likeCountSpan = container.querySelector(`#like-count-${targetId}`);
+                    const dislikeCountSpan = container.querySelector(`#dislike-count-${targetId}`);
+                    const likeBtn = container.querySelector(`#like-btn-${targetId}`);
+                    const dislikeBtn = container.querySelector(`#dislike-btn-${targetId}`);
+                    
+                    // 서버에서 받은 최신 카운트로 업데이트
+                    if (likeCountSpan) {
+                        likeCountSpan.textContent = response.data.likeCount || 0;
+                    }
+                    if (dislikeCountSpan) {
+                        dislikeCountSpan.textContent = response.data.dislikeCount || 0;
+                    }
+                    
+                    // 좋아요/싫어요 버튼 상태 업데이트
+                    if (likeBtn) {
+                        likeBtn.classList.remove('liked');
+                        if (response.data.userReaction === 'L') {
+                            likeBtn.classList.add('liked');
+                        }
+                    }
+                    if (dislikeBtn) {
+                        dislikeBtn.classList.remove('disliked');
+                        if (response.data.userReaction === 'D') {
+                            dislikeBtn.classList.add('disliked');
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('반응 토글 실패:', error);
+            if (error.response && error.response.status === 401) {
+                alert('로그인이 필요합니다.');
+            } else {
+                alert('반응 등록에 실패했습니다.');
+            }
+        }
+    }
 
-    function toggleReplyForm(id) { const el = document.getElementById(`reply-form-${id}`); if(el) el.classList.toggle('active'); }
+    function toggleReplyForm(id) { 
+        // 모든 다른 답글 입력창 닫기
+        const allForms = document.querySelectorAll('.reply-form.active');
+        allForms.forEach(form => {
+            if (form.id !== `reply-form-${id}`) {
+                form.classList.remove('active');
+            }
+        });
+        
+        // 현재 답글 입력창 토글
+        const el = document.getElementById(`reply-form-${id}`); 
+        if(el) {
+            const isActive = el.classList.contains('active');
+            if (isActive) {
+                // 닫기
+                el.classList.remove('active');
+            } else {
+                // 열기
+                el.classList.add('active');
+                // 입력창이 열리면 포커스
+                setTimeout(() => {
+                    const textarea = document.getElementById(`reply-input-${id}`);
+                    if (textarea) {
+                        textarea.focus();
+                    }
+                }, 100);
+            }
+        }
+    }
+    
     async function submitReply(id) {
         const input = document.getElementById(`reply-input-${id}`);
-        if(!input.value.trim()) { alert('내용 입력'); return; }
-        try { await axios.post(`/api/comments/${id}/replies`, { content: input.value }); location.reload(); }
-        catch(e) { alert('실패'); }
+        if(!input.value.trim()) { 
+            alert('내용을 입력해주세요.'); 
+            return; 
+        }
+        try { 
+            await axios.post(`/api/comments/${id}/replies`, { content: input.value }); 
+            alert('답글이 등록되었습니다.');
+            loadComments(currentPage);
+        }
+        catch(e) { 
+            alert('답글 등록에 실패했습니다.'); 
+        }
     }
-    async function editComment(id) {
-        const val = prompt('수정:'); if(!val) return;
-        try { await axios.put(`/api/comments/${id}`, { content: val }); loadComments(currentPage); } catch(e) { alert('실패'); }
+    
+    function editComment(id) {
+        const commentDiv = document.getElementById(`comment-${id}`);
+        if (!commentDiv) return;
+        
+        const contentDiv = commentDiv.querySelector(`#comment-content-${id}`);
+        const editLink = commentDiv.querySelector(`a[onclick*="editComment('${id}')"]`);
+        if (!contentDiv || !editLink) return;
+        
+        const currentContent = editLink.dataset.content || contentDiv.textContent.trim();
+        
+        // 편집 모드로 전환
+        const editMode = document.createElement('div');
+        editMode.className = 'edit-mode active';
+        editMode.id = `edit-mode-comment-${id}`;
+        editMode.innerHTML = `
+            <textarea class="edit-textarea" id="edit-textarea-comment-${id}">${escapeHtml(currentContent)}</textarea>
+            <div class="edit-buttons">
+                <button style="background:#667eea; color:white;" onclick="saveComment('${id}')">저장</button>
+                <button style="background:#999; color:white;" onclick="cancelEditComment('${id}')">취소</button>
+            </div>
+        `;
+        
+        contentDiv.style.display = 'none';
+        contentDiv.parentNode.insertBefore(editMode, contentDiv.nextSibling);
     }
+    
+    async function saveComment(commentId) {
+        const textarea = document.getElementById(`edit-textarea-comment-${commentId}`);
+        if (!textarea || !textarea.value.trim()) {
+            alert('내용을 입력해주세요.');
+            return;
+        }
+        
+        try {
+            await axios.put(`/api/comments/${commentId}`, { content: textarea.value.trim() });
+            loadComments(currentPage);
+        } catch(e) {
+            alert('수정에 실패했습니다.');
+        }
+    }
+    
+    function cancelEditComment(commentId) {
+        const commentDiv = document.getElementById(`comment-${commentId}`);
+        if (!commentDiv) return;
+        
+        const editMode = commentDiv.querySelector(`#edit-mode-comment-${commentId}`);
+        const contentDiv = commentDiv.querySelector(`#comment-content-${commentId}`);
+        
+        if (editMode) editMode.remove();
+        if (contentDiv) contentDiv.style.display = 'block';
+    }
+    
     async function deleteComment(id) {
-        if(!confirm('삭제?')) return;
-        try { await axios.delete(`/api/comments/${id}`); loadComments(currentPage); } catch(e) { alert('실패'); }
+        if(!confirm('정말 삭제하시겠습니까?')) return;
+        try { 
+            await axios.delete(`/api/comments/${id}`); 
+            loadComments(currentPage); 
+        } catch(e) { 
+            alert('삭제에 실패했습니다.'); 
+        }
     }
-    async function editReply(id) {
-        const val = prompt('수정:'); if(!val) return;
-        try { await axios.put(`/api/comments/replies/${id}`, { content: val }); loadComments(currentPage); } catch(e) { alert('실패'); }
+    
+    function editReply(id) {
+        const replyDiv = document.getElementById(`reply-${id}`);
+        if (!replyDiv) return;
+        
+        const contentDiv = replyDiv.querySelector(`#reply-content-${id}`);
+        const editLink = replyDiv.querySelector(`a[onclick*="editReply('${id}')"]`);
+        if (!contentDiv || !editLink) return;
+        
+        const currentContent = editLink.dataset.content || contentDiv.textContent.trim();
+        
+        // 편집 모드로 전환
+        const editMode = document.createElement('div');
+        editMode.className = 'edit-mode active';
+        editMode.id = `edit-mode-reply-${id}`;
+        editMode.innerHTML = `
+            <textarea class="edit-textarea" id="edit-textarea-reply-${id}">${escapeHtml(currentContent)}</textarea>
+            <div class="edit-buttons">
+                <button style="background:#667eea; color:white;" onclick="saveReply('${id}')">저장</button>
+                <button style="background:#999; color:white;" onclick="cancelEditReply('${id}')">취소</button>
+            </div>
+        `;
+        
+        contentDiv.style.display = 'none';
+        contentDiv.parentNode.insertBefore(editMode, contentDiv.nextSibling);
     }
+    
+    async function saveReply(replyId) {
+        const textarea = document.getElementById(`edit-textarea-reply-${replyId}`);
+        if (!textarea || !textarea.value.trim()) {
+            alert('내용을 입력해주세요.');
+            return;
+        }
+        
+        try {
+            await axios.put(`/api/comments/replies/${replyId}`, { content: textarea.value.trim() });
+            loadComments(currentPage);
+        } catch(e) {
+            alert('수정에 실패했습니다.');
+        }
+    }
+    
+    function cancelEditReply(replyId) {
+        const replyDiv = document.getElementById(`reply-${replyId}`);
+        if (!replyDiv) return;
+        
+        const editMode = replyDiv.querySelector(`#edit-mode-reply-${replyId}`);
+        const contentDiv = replyDiv.querySelector(`#reply-content-${replyId}`);
+        
+        if (editMode) editMode.remove();
+        if (contentDiv) contentDiv.style.display = 'block';
+    }
+    
     async function deleteReply(id) {
-        if(!confirm('삭제?')) return;
-        try { await axios.delete(`/api/comments/replies/${id}`); loadComments(currentPage); } catch(e) { alert('실패'); }
+        if(!confirm('정말 삭제하시겠습니까?')) return;
+        try { 
+            await axios.delete(`/api/comments/replies/${id}`); 
+            loadComments(currentPage); 
+        } catch(e) { 
+            alert('삭제에 실패했습니다.'); 
+        }
     }
-    function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+    
+    function escapeHtml(text) { 
+        const div = document.createElement('div'); 
+        div.textContent = text; 
+        return div.innerHTML; 
+    }
     /*]]>*/
     </script>
 </body>

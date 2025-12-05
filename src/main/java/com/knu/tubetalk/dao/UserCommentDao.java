@@ -204,6 +204,28 @@ public class UserCommentDao {
         }
     }
 
+    public void updateLikeCount(String commentId, int delta) throws SQLException {
+        String sql = "UPDATE USER_COMMENT SET Like_count = GREATEST(0, Like_count + ?) WHERE Comment_id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, delta);
+            ps.setString(2, commentId);
+            ps.executeUpdate();
+        }
+    }
+
+    public void updateDislikeCount(String commentId, int delta) throws SQLException {
+        String sql = "UPDATE USER_COMMENT SET Dislike_count = GREATEST(0, Dislike_count + ?) WHERE Comment_id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, delta);
+            ps.setString(2, commentId);
+            ps.executeUpdate();
+        }
+    }
+
     private UserComment mapRow(ResultSet rs) throws SQLException {
         return new UserComment(
                 rs.getString("Comment_id"),

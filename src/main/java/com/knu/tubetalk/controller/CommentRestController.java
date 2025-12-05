@@ -7,6 +7,7 @@ import com.knu.tubetalk.domain.User;
 import com.knu.tubetalk.domain.UserComment;
 import com.knu.tubetalk.service.CommentService;
 import com.knu.tubetalk.service.ReplyService;
+import com.knu.tubetalk.service.ReactionService;
 import com.knu.tubetalk.service.UserService;
 
 import org.springframework.http.HttpStatus;
@@ -19,6 +20,7 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/comments")
@@ -28,11 +30,13 @@ public class CommentRestController {
     private final CommentService commentService;
     private final UserService userService;
     private final ReplyService replyService;
+    private final ReactionService reactionService;
 
-    public CommentRestController(CommentService commentService, UserService userService, ReplyService replyService) {
+    public CommentRestController(CommentService commentService, UserService userService, ReplyService replyService, ReactionService reactionService) {
         this.commentService = commentService;
         this.userService = userService;
         this.replyService = replyService;
+        this.reactionService = reactionService;
     }
 
     @GetMapping("/thread/{threadId}")
@@ -339,6 +343,75 @@ public class CommentRestController {
         } catch (SQLException e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body("대댓글 삭제에 실패했습니다.");
+        }
+    }
+
+    @PostMapping("/{targetId}/reaction")
+    public ResponseEntity<Map<String, Object>> toggleReaction(
+            @PathVariable String targetId,
+            @RequestBody Map<String, String> requestData) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            
+            if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getName())) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+            
+            String reactionTypeStr = requestData.get("reactionType");
+            if (reactionTypeStr == null || (!reactionTypeStr.equals("L") && !reactionTypeStr.equals("D"))) {
+                return ResponseEntity.badRequest().build();
+            }
+            
+            char reactionType = reactionTypeStr.charAt(0);
+            String loginId = authentication.getName();
+            User currentUser = userService.loadUserByLoginId(loginId);
+            if (currentUser == null) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+            }
+            
+            reactionService.toggleReaction(currentUser.getUserId(), targetId, reactionType);
+            
+            // 업데이트된 좋아요/싫어요 수와 사용자의 현재 반응 반환
+            Optional<Character> userReaction = reactionService.getUserReaction(currentUser.getUserId(), targetId);
+            ReactionService.ReactionCounts counts = reactionService.getCounts(targetId);
+            
+            Map<String, Object> response = new java.util.HashMap<>();
+            response.put("success", true);
+            response.put("userReaction", userReaction.orElse(null));
+            response.put("likeCount", counts.getLikeCount());
+            response.put("dislikeCount", counts.getDislikeCount());
+            
+            return ResponseEntity.ok(response);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/{targetId}/reaction")
+    public ResponseEntity<Map<String, Object>> getUserReaction(@PathVariable String targetId) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            
+            if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getName())) {
+                return ResponseEntity.ok(Map.of("userReaction", null));
+            }
+            
+            String loginId = authentication.getName();
+            User currentUser = userService.loadUserByLoginId(loginId);
+            if (currentUser == null) {
+                return ResponseEntity.ok(Map.of("userReaction", null));
+            }
+            
+            Optional<Character> userReaction = reactionService.getUserReaction(currentUser.getUserId(), targetId);
+            
+            Map<String, Object> response = new java.util.HashMap<>();
+            response.put("userReaction", userReaction.orElse(null));
+            
+            return ResponseEntity.ok(response);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
         }
     }
 }
