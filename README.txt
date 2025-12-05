@@ -143,3 +143,17 @@ ALTER TABLE REPLY
     ADD CONSTRAINT REPLY_REF_USER
     FOREIGN KEY(User_id) REFERENCES APP_USER(User_id);
 
+
+CREATE TABLE REACTION (
+    User_id    VARCHAR2(29) NOT NULL,
+    Target_id  VARCHAR2(50) NOT NULL,  -- Comment_id 또는 Reply_id
+    Reaction_type CHAR(1) NOT NULL,    -- 'L' = Like, 'D' = Dislike
+    Created_at DATE NOT NULL,
+    PRIMARY KEY(User_id, Target_id)
+);
+
+ALTER TABLE REACTION
+    ADD CONSTRAINT REACTION_REF_USER
+    FOREIGN KEY(User_id) REFERENCES APP_USER(User_id);
+
+
