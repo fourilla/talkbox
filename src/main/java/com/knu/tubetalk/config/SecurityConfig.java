@@ -33,15 +33,18 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/", "/main").permitAll()
-                        .requestMatchers("/search/**").permitAll()
+                        .requestMatchers("/search", "/search/**").permitAll()
                         .requestMatchers("/thread/**", "/guestbook/**").permitAll()
                         .requestMatchers("/api/comments/thread/**", "/api/comments/guestbook/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/comments/*/replies").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/comments/*/replies").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/comments/*/reaction").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/comments/*/reaction").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/user/check-login-id", "/api/user/check-email").permitAll()
                         .requestMatchers(HttpMethod.POST, "/join").permitAll()
                         .requestMatchers("/login", "/join").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/images/**").permitAll()
+                        .requestMatchers("/admin", "/api/admin/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .formLogin(login -> login
@@ -53,7 +56,10 @@ public class SecurityConfig {
                             }
                             response.sendRedirect(redirectUrl);
                         })
-//                        .defaultSuccessUrl("/main", true)
+                        .failureHandler((request, response, exception) -> {
+                            // 로그인 실패 시 에러 파라미터와 함께 로그인 페이지로 리다이렉트
+                            response.sendRedirect("/login?error=true");
+                        })
                         .permitAll()
                 )
                 .logout(logout -> logout

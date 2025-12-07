@@ -1,13 +1,545 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
-    <title>Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 페이지 - TubeTalk</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .navbar {
+            background-color: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .nav-links a:hover {
+            background-color: #667eea;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        
+        .page-title {
+            background: white;
+            border-radius: 20px;
+            padding: 30px 40px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        .page-title h1 {
+            font-size: 32px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* 통계 대시보드 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-card .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-card .label {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .stat-card .value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        /* 탭 메뉴 */
+        .tabs {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .tab-btn {
+            padding: 12px 24px;
+            border: none;
+            background: #f0f0f0;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .tab-btn:hover {
+            background: #e0e0e0;
+        }
+        
+        .tab-btn.active:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        
+        /* 콘텐츠 영역 */
+        .content-section {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            display: none;
+        }
+        
+        .content-section.active {
+            display: block;
+        }
+        
+        .content-section h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        /* 테이블 */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        .data-table th,
+        .data-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .data-table th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .data-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .btn-delete {
+            padding: 6px 12px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s ease;
+        }
+        
+        .btn-delete:hover {
+            background: #c82333;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .page-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .page-btn:hover {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .page-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+    </style>
 </head>
 <body>
+    <!-- 네비게이션 바 -->
+    <nav class="navbar">
+        <a href="/main" class="logo">🎬 TubeTalk</a>
+        <div class="nav-links">
+            <a href="/main">메인</a>
+            <a href="/logout">로그아웃</a>
+        </div>
+    </nav>
 
-<h2>관리자 전용 페이지</h2>
-<p>ADMIN 권한일 때만 접근 가능</p>
+    <div class="container">
+        <!-- 페이지 제목 -->
+        <div class="page-title">
+            <h1>관리자 페이지</h1>
+        </div>
 
+        <!-- 통계 대시보드 -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="icon">👥</div>
+                <div class="label">전체 사용자</div>
+                <div class="value" id="totalUsers">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">💬</div>
+                <div class="label">전체 댓글</div>
+                <div class="value" id="totalComments">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">↩️</div>
+                <div class="label">전체 답글</div>
+                <div class="value" id="totalReplies">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="icon">🎬</div>
+                <div class="label">전체 비디오</div>
+                <div class="value" id="totalVideos">-</div>
+            </div>
+        </div>
+
+        <!-- 탭 메뉴 -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('users')">사용자 관리</button>
+            <button class="tab-btn" onclick="showTab('comments')">콘텐츠 관리</button>
+        </div>
+
+        <!-- 사용자 관리 -->
+        <div id="users-section" class="content-section active">
+            <h2>사용자 목록</h2>
+            <div id="usersTable">
+                <div class="loading">로딩 중...</div>
+            </div>
+        </div>
+
+        <!-- 콘텐츠 관리 -->
+        <div id="comments-section" class="content-section">
+            <h2>댓글 목록</h2>
+            <div id="commentsTable">
+                <div class="loading">로딩 중...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUsersPage = 1;
+        let currentCommentsPage = 1;
+        const pageSize = 20;
+
+        // 페이지 로드 시 통계 로드
+        window.onload = function() {
+            loadStats();
+            loadUsers(1);
+        };
+
+        // 통계 로드
+        async function loadStats() {
+            try {
+                const response = await axios.get('/api/admin/stats');
+                const stats = response.data;
+                
+                document.getElementById('totalUsers').textContent = stats.totalUsers || 0;
+                document.getElementById('totalComments').textContent = stats.totalComments || 0;
+                document.getElementById('totalReplies').textContent = stats.totalReplies || 0;
+                document.getElementById('totalVideos').textContent = stats.totalVideos || 0;
+            } catch (error) {
+                console.error('통계 로드 실패:', error);
+                if (error.response && error.response.status === 403) {
+                    alert('관리자 권한이 필요합니다.');
+                    window.location.href = '/main';
+                }
+            }
+        }
+
+        // 탭 전환
+        function showTab(tabName) {
+            // 모든 탭 버튼 비활성화
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.content-section').forEach(section => section.classList.remove('active'));
+            
+            // 선택한 탭 활성화
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-section').classList.add('active');
+            
+            // 데이터 로드
+            if (tabName === 'users') {
+                loadUsers(1);
+            } else if (tabName === 'comments') {
+                loadComments(1);
+            }
+        }
+
+        // 사용자 목록 로드
+        async function loadUsers(page) {
+            try {
+                const response = await axios.get(`/api/admin/users?page=${page}&size=${pageSize}`);
+                const data = response.data;
+                const users = data.users || [];
+                
+                currentUsersPage = page;
+                
+                if (users.length === 0) {
+                    document.getElementById('usersTable').innerHTML = '<div class="empty-state">사용자가 없습니다.</div>';
+                    return;
+                }
+                
+                let html = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>아이디</th>
+                                <th>이메일</th>
+                                <th>작업</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                users.forEach(user => {
+                    html += `
+                        <tr>
+                            <td>${escapeHtml(user.loginId)}</td>
+                            <td>${escapeHtml(user.email || '-')}</td>
+                            <td>
+                                <button class="btn-delete" onclick="deleteUser('${user.userId}', '${escapeHtml(user.loginId)}')">삭제</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                        </tbody>
+                    </table>
+                    <div class="pagination">
+                        <button class="page-btn" onclick="loadUsers(${page - 1})" ${page <= 1 ? 'disabled' : ''}>이전</button>
+                        <span class="page-btn active">${page}</span>
+                        <button class="page-btn" onclick="loadUsers(${page + 1})" ${users.length < pageSize ? 'disabled' : ''}>다음</button>
+                    </div>
+                `;
+                
+                document.getElementById('usersTable').innerHTML = html;
+            } catch (error) {
+                console.error('사용자 목록 로드 실패:', error);
+                if (error.response && error.response.status === 403) {
+                    alert('관리자 권한이 필요합니다.');
+                    window.location.href = '/main';
+                } else {
+                    document.getElementById('usersTable').innerHTML = '<div class="empty-state">사용자 목록을 불러오지 못했습니다.</div>';
+                }
+            }
+        }
+
+        // 댓글 목록 로드
+        async function loadComments(page) {
+            try {
+                const response = await axios.get(`/api/admin/comments?page=${page}&size=${pageSize}`);
+                const data = response.data;
+                const comments = data.comments || [];
+                
+                currentCommentsPage = page;
+                
+                if (comments.length === 0) {
+                    document.getElementById('commentsTable').innerHTML = '<div class="empty-state">댓글이 없습니다.</div>';
+                    return;
+                }
+                
+                let html = `
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>작성자</th>
+                                <th>내용</th>
+                                <th>작성일</th>
+                                <th>작업</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                comments.forEach(comment => {
+                    const content = comment.content ? (comment.content.length > 50 ? comment.content.substring(0, 50) + '...' : comment.content) : '-';
+                    const date = comment.createdAt ? new Date(comment.createdAt).toLocaleString('ko-KR') : '-';
+                    html += `
+                        <tr>
+                            <td>${escapeHtml(comment.loginId || '-')}</td>
+                            <td>${escapeHtml(content)}</td>
+                            <td>${date}</td>
+                            <td>
+                                <button class="btn-delete" onclick="deleteComment('${comment.commentId}')">삭제</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += `
+                        </tbody>
+                    </table>
+                    <div class="pagination">
+                        <button class="page-btn" onclick="loadComments(${page - 1})" ${page <= 1 ? 'disabled' : ''}>이전</button>
+                        <span class="page-btn active">${page}</span>
+                        <button class="page-btn" onclick="loadComments(${page + 1})" ${comments.length < pageSize ? 'disabled' : ''}>다음</button>
+                    </div>
+                `;
+                
+                document.getElementById('commentsTable').innerHTML = html;
+            } catch (error) {
+                console.error('댓글 목록 로드 실패:', error);
+                if (error.response && error.response.status === 403) {
+                    alert('관리자 권한이 필요합니다.');
+                    window.location.href = '/main';
+                } else {
+                    document.getElementById('commentsTable').innerHTML = '<div class="empty-state">댓글 목록을 불러오지 못했습니다.</div>';
+                }
+            }
+        }
+
+        // 사용자 삭제
+        async function deleteUser(userId, loginId) {
+            if (!confirm(`정말로 사용자 "${loginId}"를 삭제하시겠습니까?`)) {
+                return;
+            }
+            
+            try {
+                const response = await axios.delete(`/api/admin/users/${userId}`);
+                alert('사용자가 삭제되었습니다.');
+                loadUsers(currentUsersPage);
+                loadStats(); // 통계 새로고침
+            } catch (error) {
+                console.error('사용자 삭제 실패:', error);
+                if (error.response && error.response.status === 403) {
+                    alert('관리자 권한이 필요합니다.');
+                } else {
+                    alert('삭제 중 오류가 발생했습니다.');
+                }
+            }
+        }
+
+        // 댓글 삭제
+        async function deleteComment(commentId) {
+            if (!confirm('정말로 이 댓글을 삭제하시겠습니까?')) {
+                return;
+            }
+            
+            try {
+                const response = await axios.delete(`/api/admin/comments/${commentId}`);
+                alert('댓글이 삭제되었습니다.');
+                loadComments(currentCommentsPage);
+                loadStats(); // 통계 새로고침
+            } catch (error) {
+                console.error('댓글 삭제 실패:', error);
+                if (error.response && error.response.status === 403) {
+                    alert('관리자 권한이 필요합니다.');
+                } else {
+                    alert('삭제 중 오류가 발생했습니다.');
+                }
+            }
+        }
+
+        // HTML 이스케이프
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
 </body>
 </html>

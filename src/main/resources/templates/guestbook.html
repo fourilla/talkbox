@@ -152,6 +152,43 @@
             color: #333;
         }
         
+        /* 정렬 UI */
+        .sort-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .sort-controls label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .sort-controls select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .sort-controls select:hover {
+            border-color: #667eea;
+        }
+        
+        .sort-controls select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
         .comment-item {
             padding: 15px 0;
             border-bottom: 1px solid #eee;
@@ -188,6 +225,18 @@
             font-weight: 600;
             color: #333;
             font-size: 14px;
+        }
+        
+        .comment-author a {
+            color: #333;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+        
+        .comment-author a:hover {
+            color: #667eea;
+            text-decoration: underline;
         }
         
         .comment-date {
@@ -493,6 +542,22 @@
         <!-- 댓글 목록 -->
         <div class="comments-section">
             <h3>📝 남겨진 글들</h3>
+            
+            <!-- 정렬 컨트롤 -->
+            <div class="sort-controls">
+                <label for="sortBy">정렬 기준:</label>
+                <select id="sortBy">
+                    <option value="time">시간순</option>
+                    <option value="like">좋아요순</option>
+                    <option value="dislike">싫어요순</option>
+                </select>
+                <label for="sortOrder">순서:</label>
+                <select id="sortOrder">
+                    <option value="desc">내림차순</option>
+                    <option value="asc">오름차순</option>
+                </select>
+            </div>
+            
             <div id="commentList">
                 <div class="loading">로딩 중...</div>
             </div>
@@ -506,12 +571,23 @@
         const currentLoginId = /*[[${#authentication?.name}]]*/ null;
 
         window.onload = function() {
+            // 정렬 변경 시 댓글 다시 로드
+            document.getElementById('sortBy').addEventListener('change', () => loadComments());
+            document.getElementById('sortOrder').addEventListener('change', () => loadComments());
+            
             loadComments();
         };
 
         async function loadComments() {
             try {
-                const res = await axios.get(apiBase);
+                const sortBy = document.getElementById('sortBy').value;
+                const sortOrder = document.getElementById('sortOrder').value;
+                const res = await axios.get(apiBase, {
+                    params: {
+                        sortBy: sortBy,
+                        order: sortOrder
+                    }
+                });
                 const comments = res.data;
                 const listDiv = document.getElementById('commentList');
 
@@ -527,15 +603,17 @@
                     commentDiv.id = `comment-${c.commentId}`;
                     
                     const isOwner = currentLoginId && c.loginId === currentLoginId;
+                    const isAdmin = currentLoginId === 'admin';
                     
                     const authorName = escapeHtml(c.loginId || c.userId);
                     const firstLetter = authorName.charAt(0).toUpperCase();
+                    const authorLink = c.loginId ? `/guestbook/${encodeURIComponent(c.loginId)}` : '#';
                     
                     let html = `
                         <div class="comment-avatar">${firstLetter}</div>
                         <div class="comment-body">
                             <div class="comment-header">
-                                <span class="comment-author">${authorName}</span>
+                                <span class="comment-author"><a href="${authorLink}">${authorName}</a></span>
                                 <span class="comment-date" style="margin-left: 8px;">${new Date(c.createdAt).toLocaleString()}</span>
                             </div>
                             <div class="comment-content" id="comment-content-${c.commentId}">
@@ -554,6 +632,11 @@
                                 <div class="comment-actions">
                                     <a onclick="editComment('${c.commentId}')">수정</a>
                                     <a onclick="deleteComment('${c.commentId}')">삭제</a>
+                                </div>
+                            ` : ''}
+                            ${!isOwner && isAdmin ? `
+                                <div class="comment-actions">
+                                    <a onclick="deleteComment('${c.commentId}')" style="color: #dc3545;">관리자 삭제</a>
                                 </div>
                             ` : ''}
                             ${currentLoginId ? `
@@ -745,12 +828,13 @@
                 
                 const authorName = escapeHtml(reply.loginId || reply.userId);
                 const firstLetter = authorName.charAt(0).toUpperCase();
+                const authorLink = reply.loginId ? `/guestbook/${encodeURIComponent(reply.loginId)}` : '#';
                 
                 let html = `
                     <div class="comment-avatar">${firstLetter}</div>
                     <div class="comment-body">
                         <div class="comment-header">
-                            <span class="comment-author">${authorName}</span>
+                            <span class="comment-author"><a href="${authorLink}">${authorName}</a></span>
                             <span class="comment-date" style="margin-left: 8px;">${new Date(reply.createdAt).toLocaleString()}</span>
                         </div>
                         <div id="reply-content-${reply.replyId}" class="comment-content">
@@ -768,6 +852,11 @@
                             <div class="comment-actions">
                                 <a onclick="editReply('${reply.replyId}', '${commentId}')">수정</a>
                                 <a onclick="deleteReply('${reply.replyId}', '${commentId}')">삭제</a>
+                            </div>
+                        ` : ''}
+                        ${!isOwner && currentLoginId === 'admin' ? `
+                            <div class="comment-actions">
+                                <a onclick="deleteReply('${reply.replyId}', '${commentId}')" style="color: #dc3545;">관리자 삭제</a>
                             </div>
                         ` : ''}
                     </div>
@@ -825,14 +914,29 @@
                 return; 
             }
             try { 
-                await axios.post(`/api/comments/${commentId}/replies`, { content: input.value }); 
-                alert('답글이 등록되었습니다.');
-                input.value = '';
-                toggleReplyForm(commentId);
-                loadReplies(commentId);
+                const response = await axios.post(`/api/comments/${commentId}/replies`, { content: input.value }); 
+                // 성공 응답만 처리
+                if (response.status === 200 || response.status === 201) {
+                    alert('답글이 등록되었습니다.');
+                    input.value = '';
+                    toggleReplyForm(commentId);
+                    loadReplies(commentId);
+                } else {
+                    alert('답글 등록에 실패했습니다.');
+                }
             }
             catch(e) { 
-                alert('답글 등록에 실패했습니다.'); 
+                // axios는 2xx가 아닌 상태 코드를 받으면 자동으로 에러를 던짐
+                const status = e.response?.status;
+                const errorMessage = e.response?.data || e.response?.statusText || '답글 등록에 실패했습니다.';
+                
+                if (status === 401) {
+                    alert('로그인이 필요합니다.');
+                } else if (status === 400) {
+                    alert(errorMessage);
+                } else {
+                    alert('답글 등록에 실패했습니다: ' + errorMessage);
+                }
             }
         }
         

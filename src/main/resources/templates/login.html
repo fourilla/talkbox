@@ -60,14 +60,36 @@
         a:hover {
             text-decoration: underline;
         }
+        
+        .error-message {
+            background-color: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
+        
+        input.error {
+            border-color: #dc3545;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h2>로그인</h2>
+        <div class="error-message" id="errorMessage">
+            아이디 또는 비밀번호가 올바르지 않습니다.
+        </div>
         <form action="/login" method="post">
-            <input type="text" name="username" placeholder="아이디" required>
-            <input type="password" name="password" placeholder="비밀번호" required>
+            <input type="text" name="username" id="username" placeholder="아이디" required>
+            <input type="password" name="password" id="password" placeholder="비밀번호" required>
             <button type="submit">로그인</button>
         </form>
         <div class="links">
@@ -75,5 +97,24 @@
             <a href="/main">메인으로 돌아가기</a>
         </div>
     </div>
+    
+    <script>
+        // URL 파라미터에서 error 확인
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('error') === 'true') {
+            const errorMessage = document.getElementById('errorMessage');
+            const usernameInput = document.getElementById('username');
+            const passwordInput = document.getElementById('password');
+            
+            errorMessage.classList.add('show');
+            usernameInput.classList.add('error');
+            passwordInput.classList.add('error');
+            
+            // 에러 메시지 표시 후 입력 필드 포커스
+            setTimeout(() => {
+                usernameInput.focus();
+            }, 100);
+        }
+    </script>
 </body>
 </html>

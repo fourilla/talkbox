@@ -139,4 +139,16 @@ public class VideoDao {
             ps.executeUpdate();
         }
     }
+    
+    public long countAllVideos() throws SQLException {
+        String sql = "SELECT COUNT(*) FROM VIDEO";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+            return 0;
+        }
+    }
 }

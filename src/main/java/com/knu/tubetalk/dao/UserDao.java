@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import javax.sql.DataSource;
@@ -102,5 +104,38 @@ public class UserDao {
 			ps.setString(1, userId);
 			ps.executeUpdate();
 		}
+	}
+	
+	public long countAllUsers() throws SQLException {
+		String sql = "SELECT COUNT(*) FROM APP_USER";
+		try (Connection conn = dataSource.getConnection();
+		     PreparedStatement ps = conn.prepareStatement(sql);
+		     ResultSet rs = ps.executeQuery()) {
+			if (rs.next()) {
+				return rs.getLong(1);
+			}
+			return 0;
+		}
+	}
+	
+	public List<User> findAllUsers(int offset, int limit) throws SQLException {
+		String sql = "SELECT User_id, Login_id, Email, Password FROM APP_USER ORDER BY Login_id OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
+		List<User> users = new ArrayList<>();
+		try (Connection conn = dataSource.getConnection();
+		     PreparedStatement ps = conn.prepareStatement(sql)) {
+			ps.setInt(1, offset);
+			ps.setInt(2, limit);
+			try (ResultSet rs = ps.executeQuery()) {
+				while (rs.next()) {
+					users.add(new User(
+						rs.getString("User_id"),
+						rs.getString("Login_id"),
+						rs.getString("Email"),
+						rs.getString("Password")
+					));
+				}
+			}
+		}
+		return users;
 	}
 }

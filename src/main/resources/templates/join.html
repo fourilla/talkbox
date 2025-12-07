@@ -36,6 +36,25 @@
             border-radius: 4px;
             font-size: 14px;
         }
+        
+        input.error {
+            border-color: #dc3545;
+        }
+        
+        input.valid {
+            border-color: #28a745;
+        }
+        
+        .error-message {
+            color: #dc3545;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
+        }
+        
+        .error-message.show {
+            display: block;
+        }
         button {
             padding: 10px;
             background-color: #28a745;
@@ -66,9 +85,18 @@
     <div class="container">
         <h2>회원가입</h2>
         <form id="joinForm">
-            <input type="text" id="username" placeholder="아이디" required>
-            <input type="email" id="email" placeholder="이메일" required>
-            <input type="password" id="password" placeholder="비밀번호" required>
+            <div>
+                <input type="text" id="username" placeholder="아이디 (최소 3자)" required>
+                <div class="error-message" id="usernameError"></div>
+            </div>
+            <div>
+                <input type="email" id="email" placeholder="이메일" required>
+                <div class="error-message" id="emailError"></div>
+            </div>
+            <div>
+                <input type="password" id="password" placeholder="비밀번호" required>
+                <div class="error-message" id="passwordError"></div>
+            </div>
             <button type="button" onclick="join()">회원가입</button>
         </form>
         <div class="links">
@@ -78,11 +106,134 @@
     </div>
 
     <script>
+    // 이메일 형식 검증
+    function validateEmail(email) {
+        const emailRegex = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
+        return emailRegex.test(email);
+    }
+    
+    // 아이디 검증
+    function validateLoginId(loginId) {
+        if (!loginId || loginId.trim().length < 3) {
+            return { valid: false, message: "아이디는 최소 3자 이상이어야 합니다." };
+        }
+        return { valid: true };
+    }
+    
+    // 아이디 중복 체크
+    async function checkLoginIdDuplicate(loginId) {
+        if (!loginId || loginId.trim().length < 3) {
+            return { duplicate: false };
+        }
+        
+        try {
+            const response = await fetch(`/api/user/check-login-id?loginId=${encodeURIComponent(loginId)}`);
+            if (response.ok) {
+                const result = await response.json();
+                return { duplicate: result.exists };
+            }
+        } catch (e) {
+            console.error("중복 체크 오류:", e);
+        }
+        return { duplicate: false };
+    }
+    
+    // 이메일 중복 체크
+    async function checkEmailDuplicate(email) {
+        if (!email || !validateEmail(email)) {
+            return { duplicate: false };
+        }
+        
+        try {
+            const response = await fetch(`/api/user/check-email?email=${encodeURIComponent(email)}`);
+            if (response.ok) {
+                const result = await response.json();
+                return { duplicate: result.exists };
+            }
+        } catch (e) {
+            console.error("중복 체크 오류:", e);
+        }
+        return { duplicate: false };
+    }
+    
+    // 실시간 검증
+    document.getElementById("username").addEventListener("blur", async function() {
+        const loginId = this.value.trim();
+        const errorDiv = document.getElementById("usernameError");
+        
+        const validation = validateLoginId(loginId);
+        if (!validation.valid) {
+            this.classList.add("error");
+            this.classList.remove("valid");
+            errorDiv.textContent = validation.message;
+            errorDiv.classList.add("show");
+            return;
+        }
+        
+        const check = await checkLoginIdDuplicate(loginId);
+        if (check.duplicate) {
+            this.classList.add("error");
+            this.classList.remove("valid");
+            errorDiv.textContent = "이미 사용중인 아이디입니다.";
+            errorDiv.classList.add("show");
+        } else {
+            this.classList.remove("error");
+            this.classList.add("valid");
+            errorDiv.classList.remove("show");
+        }
+    });
+    
+    document.getElementById("email").addEventListener("blur", async function() {
+        const email = this.value.trim();
+        const errorDiv = document.getElementById("emailError");
+        
+        if (!validateEmail(email)) {
+            this.classList.add("error");
+            this.classList.remove("valid");
+            errorDiv.textContent = "올바른 이메일 형식이 아닙니다.";
+            errorDiv.classList.add("show");
+            return;
+        }
+        
+        const check = await checkEmailDuplicate(email);
+        if (check.duplicate) {
+            this.classList.add("error");
+            this.classList.remove("valid");
+            errorDiv.textContent = "이미 사용중인 이메일입니다.";
+            errorDiv.classList.add("show");
+        } else {
+            this.classList.remove("error");
+            this.classList.add("valid");
+            errorDiv.classList.remove("show");
+        }
+    });
+    
     function join() {
+        const loginId = document.getElementById("username").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+        
+        // 클라이언트 측 검증
+        const loginIdValidation = validateLoginId(loginId);
+        if (!loginIdValidation.valid) {
+            alert(loginIdValidation.message);
+            return;
+        }
+        
+        if (!validateEmail(email)) {
+            alert("올바른 이메일 형식이 아닙니다.");
+            return;
+        }
+        
+        if (!password || password.length < 4) {
+            alert("비밀번호는 최소 4자 이상이어야 합니다.");
+            return;
+        }
+
         const data = {
-            loginId: document.getElementById("username").value,
-            email: document.getElementById("email").value,
-            password: document.getElementById("password").value
+            loginId: loginId,
+            email: email,
+            password: password
         };
 
         fetch("/join", {

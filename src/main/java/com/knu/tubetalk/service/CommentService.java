@@ -23,20 +23,20 @@ public class CommentService {
         this.userCommentDao = userCommentDao;
     }
 
-    public PageResponse<CommentView> getCommentsWithReplies(String threadId, int page, int size) throws SQLException {
+    public PageResponse<CommentView> getCommentsWithReplies(String threadId, int page, int size, String sortBy, String order) throws SQLException {
         
         long totalElements = userCommentDao.countAllByThreadId(threadId);
         int totalPages = (int) Math.ceil((double) totalElements / size);
         
         // 3. 현재 페이지에 해당하는 데이터 조회 (50개)
-        List<CommentView> content = userCommentDao.findCommentsWithReplies(threadId, page, size);
+        List<CommentView> content = userCommentDao.findCommentsWithReplies(threadId, page, size, sortBy, order);
         
         // 4. 상자에 담아서 리턴
         return new PageResponse<>(content, page, totalPages, totalElements);
     }
 
-    public List<UserComment> getCommentsByGuestbook(String guestbookId) throws SQLException {
-        return userCommentDao.findByGuestbookId(guestbookId);
+    public List<UserComment> getCommentsByGuestbook(String guestbookId, String sortBy, String order) throws SQLException {
+        return userCommentDao.findByGuestbookId(guestbookId, sortBy, order);
     }
 
     @Transactional

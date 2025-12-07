@@ -42,10 +42,12 @@ public class CommentRestController {
     @GetMapping("/thread/{threadId}")
     public ResponseEntity<PageResponse<CommentView>> getCommentsByThread(
             @PathVariable String threadId,
-            @RequestParam(defaultValue = "1") int page) {
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "time") String sortBy,
+            @RequestParam(defaultValue = "desc") String order) {
         try {
             int size = 50; // 페이지당 50개 (댓글 + 답글 합쳐서)
-            return ResponseEntity.ok(commentService.getCommentsWithReplies(threadId, page, size));
+            return ResponseEntity.ok(commentService.getCommentsWithReplies(threadId, page, size, sortBy, order));
         } catch (SQLException e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().build();
@@ -53,9 +55,12 @@ public class CommentRestController {
     }
 
     @GetMapping("/guestbook/{guestbookId}")
-    public ResponseEntity<List<UserComment>> getCommentsByGuestbook(@PathVariable String guestbookId) {
+    public ResponseEntity<List<UserComment>> getCommentsByGuestbook(
+            @PathVariable String guestbookId,
+            @RequestParam(defaultValue = "time") String sortBy,
+            @RequestParam(defaultValue = "desc") String order) {
         try {
-            return ResponseEntity.ok(commentService.getCommentsByGuestbook(guestbookId));
+            return ResponseEntity.ok(commentService.getCommentsByGuestbook(guestbookId, sortBy, order));
         } catch (SQLException e) {
             e.printStackTrace();
             return ResponseEntity.internalServerError().build();
@@ -210,14 +215,18 @@ public class CommentRestController {
                 return ResponseEntity.notFound().build();
             }
             
-            // 작성자 확인
+            // 작성자 확인 또는 관리자 확인
             String loginId = authentication.getName();
             User currentUser = userService.loadUserByLoginId(loginId);
             if (currentUser == null) {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("존재하지 않는 사용자입니다.");
             }
             
-            if (!comment.getUserId().equals(currentUser.getUserId())) {
+            // 관리자이거나 작성자인 경우에만 삭제 가능
+            boolean isAdmin = "admin".equals(loginId);
+            boolean isOwner = comment.getUserId().equals(currentUser.getUserId());
+            
+            if (!isAdmin && !isOwner) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("본인의 댓글만 삭제할 수 있습니다.");
             }
             
@@ -334,7 +343,11 @@ public class CommentRestController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("존재하지 않는 사용자입니다.");
             }
             
-            if (!reply.getUserId().equals(currentUser.getUserId())) {
+            // 관리자이거나 작성자인 경우에만 삭제 가능
+            boolean isAdmin = "admin".equals(loginId);
+            boolean isOwner = reply.getUserId().equals(currentUser.getUserId());
+            
+            if (!isAdmin && !isOwner) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("본인의 대댓글만 삭제할 수 있습니다.");
             }
             

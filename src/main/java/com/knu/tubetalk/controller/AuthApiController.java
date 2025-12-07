@@ -2,12 +2,12 @@ package com.knu.tubetalk.controller;
 
 import java.sql.SQLException;
 import java.security.Principal;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.ui.Model;
-// ...
 
 import com.knu.tubetalk.domain.User;
 import com.knu.tubetalk.dto.JoinRequest;
@@ -86,6 +86,34 @@ public class AuthApiController {
             return ResponseEntity.ok("회원정보가 성공적으로 수정되었습니다.");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("정보 수정 실패: " + e.getMessage());
+        }
+    }
+    
+    @GetMapping("/api/user/check-login-id")
+    public ResponseEntity<Map<String, Boolean>> checkLoginId(@RequestParam String loginId) {
+        try {
+            boolean exists = userService.existsByLoginId(loginId);
+            Map<String, Boolean> response = new java.util.HashMap<>();
+            response.put("exists", exists);
+            return ResponseEntity.ok(response);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    @GetMapping("/api/user/check-email")
+    public ResponseEntity<Map<String, Boolean>> checkEmail(
+            @RequestParam String email,
+            @RequestParam(required = false) String excludeLoginId) {
+        try {
+            boolean exists = userService.existsByEmail(email, excludeLoginId);
+            Map<String, Boolean> response = new java.util.HashMap<>();
+            response.put("exists", exists);
+            return ResponseEntity.ok(response);
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().build();
         }
     }
 }

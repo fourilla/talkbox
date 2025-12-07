@@ -64,8 +64,25 @@ public class UserCommentDao {
         }
     }
     
-    public List<CommentView> findCommentsWithReplies(String threadId, int page, int size) throws SQLException {
+    public List<CommentView> findCommentsWithReplies(String threadId, int page, int size, String sortBy, String order) throws SQLException {
         int offset = (page - 1) * size;
+
+        // 정렬 기준 결정
+        String orderByClause;
+        String sortDirection = "desc".equalsIgnoreCase(order) ? "DESC" : "ASC";
+        
+        switch (sortBy.toLowerCase()) {
+            case "like":
+                orderByClause = "Like_count " + sortDirection + ", root_date DESC, type ASC, Created_at ASC";
+                break;
+            case "dislike":
+                orderByClause = "Dislike_count " + sortDirection + ", root_date DESC, type ASC, Created_at ASC";
+                break;
+            case "time":
+            default:
+                orderByClause = "root_date " + sortDirection + ", type ASC, Created_at " + (sortDirection.equals("DESC") ? "DESC" : "ASC");
+                break;
+        }
 
         // UNION ALL을 사용하여 댓글과 대댓글을 합칩니다.
         // 정렬 기준(root_date): 대댓글도 부모 댓글의 작성 시간을 기준으로 정렬하기 위해 가져옵니다.
@@ -104,8 +121,7 @@ public class UserCommentDao {
             "    JOIN APP_USER u ON r.User_id = u.User_id " +
             "    WHERE c.Thread_id = ? " +
             ") " +
-            // 정렬 순서: 1. 부모글 시간(최신순) 2. 부모글 먼저(type 'COMMENT' < 'REPLY') 3. 답글 시간(오래된순)
-            "ORDER BY root_date DESC, type ASC, Created_at ASC " +
+            "ORDER BY " + orderByClause + " " +
             "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
 
         List<CommentView> result = new ArrayList<>();
@@ -159,12 +175,29 @@ public class UserCommentDao {
         }
     }
     
-    public List<UserComment> findByGuestbookId(String guestbookId) throws SQLException {
+    public List<UserComment> findByGuestbookId(String guestbookId, String sortBy, String order) throws SQLException {
+        // 정렬 기준 결정
+        String orderByClause;
+        String sortDirection = "desc".equalsIgnoreCase(order) ? "DESC" : "ASC";
+        
+        switch (sortBy.toLowerCase()) {
+            case "like":
+                orderByClause = "uc.Like_count " + sortDirection;
+                break;
+            case "dislike":
+                orderByClause = "uc.Dislike_count " + sortDirection;
+                break;
+            case "time":
+            default:
+                orderByClause = "uc.Created_at " + sortDirection;
+                break;
+        }
+        
         String sql = "SELECT uc.Comment_id, uc.User_id, u.Login_id, uc.Thread_id, uc.Guestbook_id, uc.Content, " +
                 "uc.Created_at, uc.Updated_at, uc.Like_count, uc.Dislike_count " +
                 "FROM USER_COMMENT uc " +
                 "INNER JOIN APP_USER u ON uc.User_id = u.User_id " +
-                "WHERE uc.Guestbook_id = ? ORDER BY uc.Created_at ASC";
+                "WHERE uc.Guestbook_id = ? ORDER BY " + orderByClause;
         List<UserComment> result = new ArrayList<>();
 
         try (Connection conn = dataSource.getConnection();
@@ -257,5 +290,38 @@ public class UserCommentDao {
                 rs.getLong("Like_count"),
                 rs.getLong("Dislike_count")
         );
+    }
+    
+    public long countAllComments() throws SQLException {
+        String sql = "SELECT COUNT(*) FROM USER_COMMENT";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            if (rs.next()) {
+                return rs.getLong(1);
+            }
+            return 0;
+        }
+    }
+    
+    public List<UserComment> findAllComments(int offset, int limit) throws SQLException {
+        String sql = "SELECT uc.Comment_id, uc.User_id, u.Login_id, uc.Thread_id, uc.Guestbook_id, " +
+                "uc.Content, uc.Created_at, uc.Updated_at, uc.Like_count, uc.Dislike_count " +
+                "FROM USER_COMMENT uc " +
+                "INNER JOIN APP_USER u ON uc.User_id = u.User_id " +
+                "ORDER BY uc.Created_at DESC " +
+                "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
+        List<UserComment> comments = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, offset);
+            ps.setInt(2, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    comments.add(mapRowWithLoginId(rs));
+                }
+            }
+        }
+        return comments;
     }
 }

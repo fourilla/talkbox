@@ -129,6 +129,43 @@
             border: 0;
         }
         
+        /* 정렬 UI */
+        .sort-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .sort-controls label {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+        }
+        
+        .sort-controls select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .sort-controls select:hover {
+            border-color: #667eea;
+        }
+        
+        .sort-controls select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
         /* 댓글 섹션 */
         .comments-section {
             background: white;
@@ -207,6 +244,49 @@
             margin-top: 8px;
         }
         
+        /* 답글 접기/펼치기 */
+        .replies-section {
+            margin-top: 10px;
+            margin-left: 60px;
+            padding-left: 20px;
+            border-left: 2px solid #e0e0e0;
+        }
+        
+        .replies-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 0;
+            cursor: pointer;
+            color: #667eea;
+            font-size: 14px;
+            font-weight: 500;
+            user-select: none;
+            transition: color 0.2s ease;
+        }
+        
+        .replies-toggle:hover {
+            color: #764ba2;
+        }
+        
+        .replies-toggle-icon {
+            transition: transform 0.2s ease;
+            display: inline-block;
+        }
+        
+        .replies-toggle.expanded .replies-toggle-icon {
+            transform: rotate(180deg);
+        }
+        
+        .replies-container {
+            display: none;
+            margin-top: 5px;
+        }
+        
+        .replies-container.expanded {
+            display: block;
+        }
+        
         .comment-avatar {
             width: 40px;
             height: 40px;
@@ -235,6 +315,18 @@
             font-weight: 600;
             color: #333;
             font-size: 14px;
+        }
+        
+        .comment-author a {
+            color: #333;
+            text-decoration: none;
+            cursor: pointer;
+            transition: color 0.2s ease;
+        }
+        
+        .comment-author a:hover {
+            color: #667eea;
+            text-decoration: underline;
         }
         
         .comment-date {
@@ -565,6 +657,21 @@
         <div class="comments-section">
             <h3>💬 댓글</h3>
             
+            <!-- 정렬 컨트롤 -->
+            <div class="sort-controls">
+                <label for="sortBy">정렬 기준:</label>
+                <select id="sortBy">
+                    <option value="time">시간순</option>
+                    <option value="like">좋아요순</option>
+                    <option value="dislike">싫어요순</option>
+                </select>
+                <label for="sortOrder">순서:</label>
+                <select id="sortOrder">
+                    <option value="desc">내림차순</option>
+                    <option value="asc">오름차순</option>
+                </select>
+            </div>
+            
             <!-- 페이지 이동 -->
             <div class="page-control">
                 <input type="number" id="pageInput" placeholder="페이지" min="1">
@@ -601,6 +708,10 @@
     let totalPages = 1;
 
     window.onload = function() {
+        // 정렬 변경 시 댓글 다시 로드
+        document.getElementById('sortBy').addEventListener('change', () => loadComments(1));
+        document.getElementById('sortOrder').addEventListener('change', () => loadComments(1));
+        
         loadComments(1);
 
         document.getElementById('submitComment').onclick = async function() {
@@ -632,7 +743,15 @@
 
     async function loadComments(page) {
         try {
-            const response = await axios.get(apiBase, { params: { page: page } });
+            const sortBy = document.getElementById('sortBy').value;
+            const sortOrder = document.getElementById('sortOrder').value;
+            const response = await axios.get(apiBase, { 
+                params: { 
+                    page: page,
+                    sortBy: sortBy,
+                    order: sortOrder
+                } 
+            });
             
             const data = response.data;
             const items = data.content; 
@@ -697,69 +816,169 @@
             return;
         }
 
+        // 댓글과 답글을 그룹화
+        const comments = [];
+        const repliesMap = new Map();
+        
         items.forEach(item => {
-            const div = document.createElement('div');
-            const isOwner = currentLoginId && item.loginId === currentLoginId;
-            
             if (item.type === 'COMMENT') {
-                div.className = 'comment-item';
-                div.id = `comment-${item.id}`;
+                comments.push(item);
+                repliesMap.set(item.id, []);
             } else {
-                div.className = 'reply-item';
-                div.id = `reply-${item.id}`;
+                const parentReplies = repliesMap.get(item.parentId) || [];
+                parentReplies.push(item);
+                repliesMap.set(item.parentId, parentReplies);
             }
+        });
 
-            const authorName = escapeHtml(item.loginId || '알 수 없음');
-            const firstLetter = authorName.charAt(0).toUpperCase();
-            
-            let html = `
+        // 댓글과 답글을 표시
+        comments.forEach(comment => {
+            const replies = repliesMap.get(comment.id) || [];
+            const commentDiv = createCommentElement(comment, replies);
+            container.appendChild(commentDiv);
+            loadUserReaction(comment.id);
+        });
+    }
+    
+    function createCommentElement(comment, replies) {
+        const div = document.createElement('div');
+        const isOwner = currentLoginId && comment.loginId === currentLoginId;
+        const isAdmin = currentLoginId === 'admin';
+        div.className = 'comment-item';
+        div.id = `comment-${comment.id}`;
+
+        const authorName = escapeHtml(comment.loginId || '알 수 없음');
+        const firstLetter = authorName.charAt(0).toUpperCase();
+        const authorLink = comment.loginId ? `/guestbook/${encodeURIComponent(comment.loginId)}` : '#';
+        
+        let html = `
+            <div class="comment-avatar">${firstLetter}</div>
+            <div class="comment-body">
+                <div class="comment-header">
+                    <span class="comment-author"><a href="${authorLink}">${authorName}</a></span>
+                    <span class="comment-date" style="margin-left: 8px;">${new Date(comment.createdAt).toLocaleString('ko-KR')}</span>
+                </div>
+                <div class="comment-content" id="comment-content-${comment.id}">${escapeHtml(comment.content)}</div>
+                <div class="reaction-buttons">
+                    <button class="reaction-btn" id="like-btn-${comment.id}" onclick="toggleReaction('${comment.id}', 'L')">
+                        👍 <span id="like-count-${comment.id}">${comment.likeCount || 0}</span>
+                    </button>
+                    <button class="reaction-btn" id="dislike-btn-${comment.id}" onclick="toggleReaction('${comment.id}', 'D')">
+                        👎 <span id="dislike-count-${comment.id}">${comment.dislikeCount || 0}</span>
+                    </button>
+                </div>
+                ${currentLoginId ? `<div style="margin-top: 5px;"><a class="reply-link" onclick="toggleReplyForm('${comment.id}')">답글달기</a></div>` : ''}
+                ${isOwner ? `
+                    <div class="comment-actions">
+                        <a onclick="editComment('${comment.id}')">수정</a>
+                        <a onclick="deleteComment('${comment.id}')">삭제</a>
+                    </div>
+                ` : ''}
+                ${!isOwner && isAdmin ? `
+                    <div class="comment-actions">
+                        <a onclick="deleteComment('${comment.id}')" style="color: #dc3545;">관리자 삭제</a>
+                    </div>
+                ` : ''}
+                ${currentLoginId ? `
+                    <div class="reply-form" id="reply-form-${comment.id}">
+                        <div class="comment-avatar" style="width: 32px; height: 32px; font-size: 14px;">${currentLoginId.charAt(0).toUpperCase()}</div>
+                        <div class="reply-form-content">
+                            <textarea id="reply-input-${comment.id}" placeholder="답글 추가..."></textarea>
+                            <div class="btn-group">
+                                <button class="btn-edit" onclick="toggleReplyForm('${comment.id}')">취소</button>
+                                <button class="btn-reply" onclick="submitReply('${comment.id}')">답글</button>
+                            </div>
+                        </div>
+                    </div>
+                ` : ''}
+        `;
+        
+        // 답글이 있으면 답글 섹션 추가
+        if (replies.length > 0) {
+            html += `
+                <div class="replies-section">
+                    <div class="replies-toggle" onclick="toggleReplies('${comment.id}')">
+                        <span class="replies-toggle-icon">▼</span>
+                        <span>답글 ${replies.length}개</span>
+                    </div>
+                    <div class="replies-container" id="replies-container-${comment.id}">
+                        ${replies.map(reply => createReplyHTML(reply)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+        
+        div.innerHTML = html;
+        
+        if (isOwner) {
+            const editLink = div.querySelector('a[onclick*="editComment"]');
+            if(editLink) editLink.dataset.content = comment.content;
+        }
+        
+        // 답글에 대한 이벤트 리스너 추가
+        replies.forEach(reply => {
+            const replyDiv = div.querySelector(`#reply-${reply.id}`);
+            if (replyDiv) {
+                const isReplyOwner = currentLoginId && reply.loginId === currentLoginId;
+                if (isReplyOwner) {
+                    const editLink = replyDiv.querySelector('a[onclick*="editReply"]');
+                    if(editLink) editLink.dataset.content = reply.content;
+                }
+                loadUserReaction(reply.id);
+            }
+        });
+        
+        return div;
+    }
+    
+    function createReplyHTML(reply) {
+        const isOwner = currentLoginId && reply.loginId === currentLoginId;
+        const isAdmin = currentLoginId === 'admin';
+        const authorName = escapeHtml(reply.loginId || '알 수 없음');
+        const firstLetter = authorName.charAt(0).toUpperCase();
+        const authorLink = reply.loginId ? `/guestbook/${encodeURIComponent(reply.loginId)}` : '#';
+        
+        return `
+            <div class="reply-item" id="reply-${reply.id}">
                 <div class="comment-avatar">${firstLetter}</div>
                 <div class="comment-body">
                     <div class="comment-header">
-                        <span class="comment-author">${authorName}</span>
-                        <span class="comment-date" style="margin-left: 8px;">${new Date(item.createdAt).toLocaleString('ko-KR')}</span>
+                        <span class="comment-author"><a href="${authorLink}">${authorName}</a></span>
+                        <span class="comment-date" style="margin-left: 8px;">${new Date(reply.createdAt).toLocaleString('ko-KR')}</span>
                     </div>
-                    <div class="comment-content" id="${item.type === 'COMMENT' ? 'comment' : 'reply'}-content-${item.id}">${escapeHtml(item.content)}</div>
+                    <div class="comment-content" id="reply-content-${reply.id}">${escapeHtml(reply.content)}</div>
                     <div class="reaction-buttons">
-                        <button class="reaction-btn" id="like-btn-${item.id}" onclick="toggleReaction('${item.id}', 'L')">
-                            👍 <span id="like-count-${item.id}">${item.likeCount || 0}</span>
+                        <button class="reaction-btn" id="like-btn-${reply.id}" onclick="toggleReaction('${reply.id}', 'L')">
+                            👍 <span id="like-count-${reply.id}">${reply.likeCount || 0}</span>
                         </button>
-                        <button class="reaction-btn" id="dislike-btn-${item.id}" onclick="toggleReaction('${item.id}', 'D')">
-                            👎 <span id="dislike-count-${item.id}">${item.dislikeCount || 0}</span>
+                        <button class="reaction-btn" id="dislike-btn-${reply.id}" onclick="toggleReaction('${reply.id}', 'D')">
+                            👎 <span id="dislike-count-${reply.id}">${reply.dislikeCount || 0}</span>
                         </button>
                     </div>
-                    ${item.type === 'COMMENT' && currentLoginId ? `<div style="margin-top: 5px;"><a class="reply-link" onclick="toggleReplyForm('${item.id}')">답글달기</a></div>` : ''}
                     ${isOwner ? `
                         <div class="comment-actions">
-                            <a onclick="edit${item.type === 'COMMENT' ? 'Comment' : 'Reply'}('${item.id}')">수정</a>
-                            <a onclick="delete${item.type === 'COMMENT' ? 'Comment' : 'Reply'}('${item.id}')">삭제</a>
+                            <a onclick="editReply('${reply.id}')">수정</a>
+                            <a onclick="deleteReply('${reply.id}')">삭제</a>
                         </div>
                     ` : ''}
-                    ${item.type === 'COMMENT' && currentLoginId ? `
-                        <div class="reply-form" id="reply-form-${item.id}">
-                            <div class="comment-avatar" style="width: 32px; height: 32px; font-size: 14px;">${currentLoginId.charAt(0).toUpperCase()}</div>
-                            <div class="reply-form-content">
-                                <textarea id="reply-input-${item.id}" placeholder="답글 추가..."></textarea>
-                                <div class="btn-group">
-                                    <button class="btn-edit" onclick="toggleReplyForm('${item.id}')">취소</button>
-                                    <button class="btn-reply" onclick="submitReply('${item.id}')">답글</button>
-                                </div>
-                            </div>
+                    ${!isOwner && isAdmin ? `
+                        <div class="comment-actions">
+                            <a onclick="deleteReply('${reply.id}')" style="color: #dc3545;">관리자 삭제</a>
                         </div>
                     ` : ''}
                 </div>
-            `;
-            
-            div.innerHTML = html;
-            
-            if (isOwner) {
-                const editLink = div.querySelector('a[onclick*="edit"]');
-                if(editLink) editLink.dataset.content = item.content;
-            }
-            container.appendChild(div);
-            
-            loadUserReaction(item.id);
-        });
+            </div>
+        `;
+    }
+    
+    function toggleReplies(commentId) {
+        const toggle = document.querySelector(`#comment-${commentId} .replies-toggle`);
+        const container = document.getElementById(`replies-container-${commentId}`);
+        
+        if (toggle && container) {
+            toggle.classList.toggle('expanded');
+            container.classList.toggle('expanded');
+        }
     }
     
     async function loadUserReaction(targetId) {
@@ -890,12 +1109,35 @@
             return; 
         }
         try { 
-            await axios.post(`/api/comments/${id}/replies`, { content: input.value }); 
-            alert('답글이 등록되었습니다.');
-            loadComments(currentPage);
+            const response = await axios.post(`/api/comments/${id}/replies`, { content: input.value }); 
+            // 성공 응답만 처리
+            if (response.status === 200 || response.status === 201) {
+                alert('답글이 등록되었습니다.');
+                input.value = '';
+                toggleReplyForm(id);
+                // 답글 섹션 자동으로 펼치기
+                const repliesToggle = document.querySelector(`#comment-${id} .replies-toggle`);
+                const repliesContainer = document.getElementById(`replies-container-${id}`);
+                if (repliesToggle && !repliesToggle.classList.contains('expanded')) {
+                    toggleReplies(id);
+                }
+                loadComments(currentPage);
+            } else {
+                alert('답글 등록에 실패했습니다.');
+            }
         }
         catch(e) { 
-            alert('답글 등록에 실패했습니다.'); 
+            // axios는 2xx가 아닌 상태 코드를 받으면 자동으로 에러를 던짐
+            const status = e.response?.status;
+            const errorMessage = e.response?.data || e.response?.statusText || '답글 등록에 실패했습니다.';
+            
+            if (status === 401) {
+                alert('로그인이 필요합니다.');
+            } else if (status === 400) {
+                alert(errorMessage);
+            } else {
+                alert('답글 등록에 실패했습니다: ' + errorMessage);
+            }
         }
     }
     
