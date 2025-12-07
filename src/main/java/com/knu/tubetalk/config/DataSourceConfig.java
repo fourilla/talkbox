@@ -1,6 +1,7 @@
 package com.knu.tubetalk.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -23,18 +24,21 @@ import javax.sql.DataSource;
 public class DataSourceConfig {
 
     /**
-     * Spring Boot가 자동으로 생성한 DataSource를 주입받습니다.
-     */
-    @Autowired
-    private DataSource originalDataSource;
-
-    /**
      * DataSource를 TransactionAwareDataSourceProxy로 래핑합니다.
      * @Primary로 설정하여 DAO들이 자동으로 이 DataSource를 주입받도록 합니다.
+     * 
+     * ObjectProvider를 사용하여 순환 참조를 방지합니다.
      */
     @Bean
     @Primary
-    public DataSource dataSource() {
+    @ConditionalOnBean(DataSource.class)
+    public DataSource dataSource(ObjectProvider<DataSource> dataSourceProvider) {
+        // ObjectProvider에서 원본 DataSource 가져오기 (우리 Bean 제외)
+        DataSource originalDataSource = dataSourceProvider.stream()
+            .filter(ds -> !(ds instanceof TransactionAwareDataSourceProxy))
+            .findFirst()
+            .orElseThrow(() -> new IllegalStateException("원본 DataSource를 찾을 수 없습니다."));
+        
         return new TransactionAwareDataSourceProxy(originalDataSource);
     }
 }
