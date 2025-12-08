@@ -7,7 +7,9 @@ import org.springframework.stereotype.Repository;
 import javax.sql.DataSource;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Repository
@@ -67,76 +69,44 @@ public class UserCommentDao {
     public List<CommentView> findCommentsWithReplies(String threadId, int page, int size, String sortBy, String order) throws SQLException {
         int offset = (page - 1) * size;
 
-        // 정렬 기준 결정
-        String orderByClause;
         String sortDirection = "desc".equalsIgnoreCase(order) ? "DESC" : "ASC";
-        
+        String commentOrderBy;
         switch (sortBy.toLowerCase()) {
             case "like":
-                orderByClause = "Like_count " + sortDirection + ", root_date DESC, type ASC, Created_at ASC";
+                commentOrderBy = "c.Like_count " + sortDirection + ", c.Created_at DESC";
                 break;
             case "dislike":
-                orderByClause = "Dislike_count " + sortDirection + ", root_date DESC, type ASC, Created_at ASC";
+                commentOrderBy = "c.Dislike_count " + sortDirection + ", c.Created_at DESC";
                 break;
             case "time":
             default:
-                orderByClause = "root_date " + sortDirection + ", type ASC, Created_at " + (sortDirection.equals("DESC") ? "DESC" : "ASC");
+                commentOrderBy = "c.Created_at " + sortDirection;
                 break;
         }
 
-        // UNION ALL을 사용하여 댓글과 대댓글을 합칩니다.
-        // 정렬 기준(root_date): 대댓글도 부모 댓글의 작성 시간을 기준으로 정렬하기 위해 가져옵니다.
-        String sql = 
-            "SELECT * FROM ( " +
-            "    SELECT " +
-            "        c.Comment_id AS id, " +
-            "        'COMMENT' AS type, " +
-            "        c.Comment_id AS parent_id, " +
-            "        c.Content, " +
-            "        c.Created_at, " +
-            "        c.User_id, " +
-            "        u.Login_id, " +
-            "        c.Like_count, " +
-            "        c.Dislike_count, " +
-            "        c.Created_at AS root_date " +  // 정렬용: 본인의 작성 시간
-            "    FROM USER_COMMENT c " +
-            "    JOIN APP_USER u ON c.User_id = u.User_id " +
-            "    WHERE c.Thread_id = ? " +
-            
-            "    UNION ALL " +
-            
-            "    SELECT " +
-            "        r.Reply_id AS id, " +
-            "        'REPLY' AS type, " +
-            "        r.Comment_id AS parent_id, " +
-            "        r.Content, " +
-            "        r.Created_at, " +
-            "        r.User_id, " +
-            "        u.Login_id, " +
-            "        r.Like_count, " +
-            "        r.Dislike_count, " +
-            "        c.Created_at AS root_date " + // 정렬용: 부모 댓글의 작성 시간
-            "    FROM REPLY r " +
-            "    JOIN USER_COMMENT c ON r.Comment_id = c.Comment_id " +
-            "    JOIN APP_USER u ON r.User_id = u.User_id " +
-            "    WHERE c.Thread_id = ? " +
-            ") " +
-            "ORDER BY " + orderByClause + " " +
-            "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
+        // 1) 페이지에 해당하는 댓글만 조회
+        String commentSql =
+                "SELECT c.Comment_id AS id, 'COMMENT' AS type, c.Comment_id AS parent_id, " +
+                "       c.Content, c.Created_at, c.User_id, u.Login_id, c.Like_count, c.Dislike_count " +
+                "FROM USER_COMMENT c " +
+                "JOIN APP_USER u ON c.User_id = u.User_id " +
+                "WHERE c.Thread_id = ? " +
+                "ORDER BY " + commentOrderBy + " " +
+                "OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
 
-        List<CommentView> result = new ArrayList<>();
+        List<CommentView> comments = new ArrayList<>();
+        List<String> commentIds = new ArrayList<>();
 
         try (Connection conn = dataSource.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+             PreparedStatement ps = conn.prepareStatement(commentSql)) {
 
             ps.setString(1, threadId);
-            ps.setString(2, threadId);
-            ps.setInt(3, offset);
-            ps.setInt(4, size);
+            ps.setInt(2, offset);
+            ps.setInt(3, size);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    result.add(new CommentView(
+                    CommentView comment = new CommentView(
                             rs.getString("id"),
                             rs.getString("type"),
                             rs.getString("parent_id"),
@@ -146,29 +116,80 @@ public class UserCommentDao {
                             rs.getTimestamp("Created_at").toLocalDateTime(),
                             rs.getLong("Like_count"),
                             rs.getLong("Dislike_count")
-                    ));
+                    );
+                    comments.add(comment);
+                    commentIds.add(comment.getId());
                 }
             }
         }
-        return result;
+
+        // 댓글이 없으면 바로 반환
+        if (commentIds.isEmpty()) {
+            return comments;
+        }
+
+        // 2) 해당 댓글들에 대한 답글 전체 조회 (작성 시간 오름차순)
+        String placeholders = String.join(",", commentIds.stream().map(id -> "?").toArray(String[]::new));
+        String replySql =
+                "SELECT r.Reply_id AS id, 'REPLY' AS type, r.Comment_id AS parent_id, " +
+                "       r.Content, r.Created_at, r.User_id, u.Login_id, r.Like_count, r.Dislike_count " +
+                "FROM REPLY r " +
+                "JOIN APP_USER u ON r.User_id = u.User_id " +
+                "WHERE r.Comment_id IN (" + placeholders + ") " +
+                "ORDER BY r.Created_at ASC";
+
+        Map<String, List<CommentView>> repliesByParent = new HashMap<>();
+
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(replySql)) {
+
+            for (int i = 0; i < commentIds.size(); i++) {
+                ps.setString(i + 1, commentIds.get(i));
+            }
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    CommentView reply = new CommentView(
+                            rs.getString("id"),
+                            rs.getString("type"),
+                            rs.getString("parent_id"),
+                            rs.getString("Content"),
+                            rs.getString("User_id"),
+                            rs.getString("Login_id"),
+                            rs.getTimestamp("Created_at").toLocalDateTime(),
+                            rs.getLong("Like_count"),
+                            rs.getLong("Dislike_count")
+                    );
+                    repliesByParent.computeIfAbsent(reply.getParentId(), k -> new ArrayList<>()).add(reply);
+                }
+            }
+        }
+
+        // 3) 댓글 + 해당 댓글의 답글을 순서대로 합치기
+        List<CommentView> combined = new ArrayList<>();
+        for (CommentView comment : comments) {
+            combined.add(comment);
+            List<CommentView> replies = repliesByParent.get(comment.getId());
+            if (replies != null) {
+                combined.addAll(replies);
+            }
+        }
+
+        return combined;
     }
     
     public long countAllByThreadId(String threadId) throws SQLException {
-        // (댓글 개수) + (대댓글 개수) 를 더해서 가져옴
-        String sql = "SELECT " +
-                     "(SELECT COUNT(*) FROM USER_COMMENT WHERE Thread_id = ?) + " +
-                     "(SELECT COUNT(*) FROM REPLY r JOIN USER_COMMENT c ON r.Comment_id = c.Comment_id WHERE c.Thread_id = ?) " +
-                     "FROM DUAL";
-                     
+        // 페이지네이션은 "댓글" 개수를 기준으로 계산한다.
+        String sql = "SELECT COUNT(*) FROM USER_COMMENT WHERE Thread_id = ?";
+
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            
-            ps.setString(1, threadId); // 첫 번째 ? (댓글 조건)
-            ps.setString(2, threadId); // 두 번째 ? (대댓글 조건)
-            
+
+            ps.setString(1, threadId);
+
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return rs.getLong(1); // 합계 반환
+                    return rs.getLong(1);
                 }
                 return 0;
             }
@@ -325,3 +346,4 @@ public class UserCommentDao {
         return comments;
     }
 }
+
