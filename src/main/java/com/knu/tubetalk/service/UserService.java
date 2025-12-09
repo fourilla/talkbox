@@ -2,12 +2,16 @@ package com.knu.tubetalk.service;
 
 import com.knu.tubetalk.dao.UserDao;
 import com.knu.tubetalk.dao.GuestbookDao;
+import com.knu.tubetalk.dao.ReactionDao;
+import com.knu.tubetalk.dao.ReplyDao;
+import com.knu.tubetalk.dao.UserCommentDao;
 import com.knu.tubetalk.domain.Guestbook;
 import java.time.LocalDateTime;
 import com.knu.tubetalk.domain.User;
 import com.knu.tubetalk.dto.JoinRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.SQLException;
 import java.util.Optional;
@@ -20,16 +24,27 @@ public class UserService {
     private final UserDao userDao;
     private final PasswordEncoder passwordEncoder;
     private final GuestbookDao guestbookDao;
+    private final ReactionDao reactionDao;
+    private final ReplyDao replyDao;
+    private final UserCommentDao userCommentDao;
     
     // 이메일 형식 검증을 위한 정규식
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
         "^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$"
     );
 
-    public UserService(UserDao userDao, PasswordEncoder passwordEncoder, GuestbookDao guestbookDao) {
+    public UserService(UserDao userDao,
+                       PasswordEncoder passwordEncoder,
+                       GuestbookDao guestbookDao,
+                       ReactionDao reactionDao,
+                       ReplyDao replyDao,
+                       UserCommentDao userCommentDao) {
         this.userDao = userDao;
         this.passwordEncoder = passwordEncoder;
         this.guestbookDao = guestbookDao;
+        this.reactionDao = reactionDao;
+        this.replyDao = replyDao;
+        this.userCommentDao = userCommentDao;
     }
     
     /**
@@ -135,6 +150,35 @@ public class UserService {
 
         // 2. 로드된 User_id로 삭제를 진행합니다.
         userDao.deleteByUserId(user.getUserId());
+    }
+
+    /**
+     * 사용자 계정 및 연관된 모든 데이터(댓글, 답글, 반응, 방명록)를 삭제합니다.
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteUserCompletelyByLoginId(String loginId) throws SQLException {
+        User user = userDao.findByLoginId(loginId)
+                .orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다."));
+        String userId = user.getUserId();
+
+        // 1) 사용자가 남긴 댓글/답글에 달린 모든 반응 제거
+        reactionDao.deleteAllByTargetIdsInRepliesOfCommentsOwnedByUser(userId);
+        reactionDao.deleteAllByTargetIdsInCommentsOfUser(userId);
+        reactionDao.deleteAllByTargetIdsInRepliesOfUser(userId);
+
+        // 2) 사용자가 남긴 반응 제거
+        reactionDao.deleteAllByUserId(userId);
+
+        // 3) 사용자가 작성한 댓글/답글 제거 (댓글보다 답글을 먼저 제거)
+        replyDao.deleteAllByCommentOwner(userId);
+        replyDao.deleteAllByUserId(userId);
+        userCommentDao.deleteAllByUserId(userId);
+
+        // 4) 방명록 삭제
+        guestbookDao.deleteById(userId);
+
+        // 5) 최종 사용자 삭제
+        userDao.deleteByUserId(userId);
     }
     
     /**

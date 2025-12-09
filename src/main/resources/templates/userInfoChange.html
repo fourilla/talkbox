@@ -84,6 +84,10 @@
             transition: all 0.3s ease;
             margin-top: 10px;
         }
+
+        .danger-btn {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ff3b3b 100%);
+        }
         
         button:hover {
             transform: translateY(-2px);
@@ -148,6 +152,7 @@
             </div>
             
             <button type="button" onclick="changeInfo()">회원정보 수정</button>
+            <button type="button" class="danger-btn" onclick="deleteAccount()">회원 탈퇴</button>
         </form>
         
         <div class="links">
@@ -269,6 +274,32 @@
                 });
             } else {
                 return res.text().then(msg => alert(msg));
+            }
+        })
+        .catch(error => {
+            alert("오류 발생: " + error.message);
+        });
+    }
+
+    function deleteAccount() {
+        const loginId = document.getElementById("username").value;
+        if (!confirm("정말 탈퇴하시겠습니까? 탈퇴 후에는 되돌릴 수 없습니다.")) {
+            return;
+        }
+
+        fetch("/api/user", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ loginId })
+        })
+        .then(res => {
+            if (res.ok) {
+                return res.text().then(msg => {
+                    alert(msg);
+                    window.location.href = "/logout";
+                });
+            } else {
+                return res.text().then(msg => alert(msg || "탈퇴에 실패했습니다."));
             }
         })
         .catch(error => {

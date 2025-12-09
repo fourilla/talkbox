@@ -89,6 +89,27 @@ public class AuthApiController {
         }
     }
     
+    @DeleteMapping("/api/user")
+    public ResponseEntity<String> deleteAccount(
+            @RequestBody Map<String, String> payload,
+            @AuthenticationPrincipal org.springframework.security.core.userdetails.User principal) {
+        String loginId = payload.get("loginId");
+
+        // 보안 검사: 로그인한 사람과 삭제 대상이 같은지 확인
+        if (principal == null || !principal.getUsername().equals(loginId)) {
+            return ResponseEntity.status(403).body("본인 계정만 탈퇴할 수 있습니다.");
+        }
+
+        try {
+            userService.deleteUserCompletelyByLoginId(loginId);
+            return ResponseEntity.ok("회원 탈퇴가 완료되었습니다.");
+        } catch (SQLException e) {
+            return ResponseEntity.internalServerError().body("탈퇴 처리 중 오류가 발생했습니다.");
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    
     @GetMapping("/api/user/check-login-id")
     public ResponseEntity<Map<String, Boolean>> checkLoginId(@RequestParam String loginId) {
         try {

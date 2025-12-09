@@ -78,6 +78,48 @@ public class ReactionDao {
         }
     }
 
+    public void deleteAllByUserId(String userId) throws SQLException {
+        String sql = "DELETE FROM REACTION WHERE User_id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.executeUpdate();
+        }
+    }
+
+    public void deleteAllByTargetIdsInCommentsOfUser(String userId) throws SQLException {
+        String sql = "DELETE FROM REACTION WHERE Target_id IN (SELECT Comment_id FROM USER_COMMENT WHERE User_id = ?)";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.executeUpdate();
+        }
+    }
+
+    public void deleteAllByTargetIdsInRepliesOfUser(String userId) throws SQLException {
+        String sql = "DELETE FROM REACTION WHERE Target_id IN (SELECT Reply_id FROM REPLY WHERE User_id = ?)";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.executeUpdate();
+        }
+    }
+
+    public void deleteAllByTargetIdsInRepliesOfCommentsOwnedByUser(String userId) throws SQLException {
+        String sql = "DELETE FROM REACTION WHERE Target_id IN (" +
+                "SELECT r.Reply_id FROM REPLY r JOIN USER_COMMENT c ON r.Comment_id = c.Comment_id WHERE c.User_id = ?" +
+                ")";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.executeUpdate();
+        }
+    }
+
     public long countLikes(String targetId) throws SQLException {
         String sql = "SELECT COUNT(*) FROM REACTION WHERE Target_id = ? AND Reaction_type = 'L'";
         try (Connection conn = dataSource.getConnection();

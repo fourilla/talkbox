@@ -109,6 +109,26 @@ public class ReplyDao {
         }
     }
 
+    public void deleteAllByUserId(String userId) throws SQLException {
+        String sql = "DELETE FROM REPLY WHERE User_id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.executeUpdate();
+        }
+    }
+
+    public void deleteAllByCommentOwner(String userId) throws SQLException {
+        String sql = "DELETE FROM REPLY WHERE Comment_id IN (SELECT Comment_id FROM USER_COMMENT WHERE User_id = ?)";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.executeUpdate();
+        }
+    }
+
     public void updateLikeCount(String replyId, int delta) throws SQLException {
         String sql = "UPDATE REPLY SET Like_count = GREATEST(0, Like_count + ?) WHERE Reply_id = ?";
         try (Connection conn = dataSource.getConnection();

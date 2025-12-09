@@ -258,6 +258,16 @@ public class UserCommentDao {
         }
     }
 
+    public void deleteAllByUserId(String userId) throws SQLException {
+        String sql = "DELETE FROM USER_COMMENT WHERE User_id = ?";
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+            ps.executeUpdate();
+        }
+    }
+
     public void updateLikeCount(String commentId, int delta) throws SQLException {
         String sql = "UPDATE USER_COMMENT SET Like_count = GREATEST(0, Like_count + ?) WHERE Comment_id = ?";
         try (Connection conn = dataSource.getConnection();
@@ -346,4 +356,5 @@ public class UserCommentDao {
         return comments;
     }
 }
+
 
