@@ -1,133 +1,89 @@
-수정사항
-ALTER TABLE APP_USER MODIFY (Password VARCHAR2(100)); -> 비밀번호를 해시값으로 저장하기 위해 100 자로 바꿈
-Video 에 Title CLOB 이면 검색이 힘들어져서 VARCHAR2(4000) 으로 변경 -> 유튜브 제목 길이제한 100자
-통일성 문제로 나머지 VARCHAR 전부 VARCHAR2 로 변경
+================================
+Phase3 대비 테이블 변경 사항
+================================
 
-1. src/main/resources/application.properties 를 본인 환경에 맞게 수정
-2. maven 프로젝트라서 maven install 해줘야함
+APP_USER.Password 컬럼 길이 → 100으로 확장
+ - 비밀번호 해시값을 저장하기 위함
 
-현재 테이블 구조
-DROP TABLE REPLY CASCADE CONSTRAINTS;
-DROP TABLE USER_COMMENT CASCADE CONSTRAINTS;
-DROP TABLE GUESTBOOK CASCADE CONSTRAINTS;
-DROP TABLE THREAD CASCADE CONSTRAINTS;
-DROP TABLE VIDEO CASCADE CONSTRAINTS;
-DROP TABLE CHANNEL CASCADE CONSTRAINTS;
-DROP TABLE APP_USER CASCADE CONSTRAINTS;
-DROP TABLE REACTION CASCADE CONSTRAINTS;
+VIDEO.Title → VARCHAR2(4000)로 변경
+ - CLOB 사용 시 검색 기능에 제약이 있어 VARCHAR2 로 변경
 
-CREATE TABLE APP_USER(
-    User_id VARCHAR2(29) NOT NULL,
-    Login_id VARCHAR2(50) NOT NULL,
-    Email VARCHAR2(50),
-    Password VARCHAR2(100) NOT NULL,
-    PRIMARY KEY(User_id)
-);
+전체 테이블의 VARCHAR → VARCHAR2 로 통일
+ - 일관성 목적
 
-CREATE TABLE CHANNEL(
-    Channel_id VARCHAR2(24) NOT NULL,
-    Name VARCHAR2(100) NOT NULL,
-    Description CLOB,
-    PRIMARY KEY(Channel_id)
-);
+================================
+프로젝트 개발환경
+================================
 
-CREATE TABLE VIDEO(
-    Video_id VARCHAR2(11) NOT NULL,
-    Channel_id VARCHAR2(24) NOT NULL,
-    Title VARCHAR2(4000) NOT NULL,
-    Description CLOB,
-    Uploaded_at DATE NOT NULL,
-    Like_count NUMBER NOT NULL,
-    Dislike_count NUMBER NOT NULL,
-    Comment_count NUMBER NOT NULL,
-    PRIMARY KEY(Video_id)
-);
+운영체제: Windows
+Backend: Spring Framework
+Frontend: Thymeleaf, HTML, CSS, JavaScript
+DB: Oracle
+SQL 툴: SQLDeveloper
+프로젝트 빌드: Maven (pom.xml 기반 라이브러리 관리)
 
-ALTER TABLE VIDEO
-    ADD CONSTRAINT VIDEO_REF_CHANNEL
-    FOREIGN KEY(Channel_id) REFERENCES CHANNEL(Channel_id);
+================================
+프로젝트 실행 방법
+================================
 
-CREATE TABLE THREAD(
-    Thread_id VARCHAR2(11) NOT NULL,
-    Created_at DATE NOT NULL,
-    Participant_count NUMBER,
-    PRIMARY KEY(Thread_id)
-);
+1. DB 준비
+ - createTables.sql, inserts.sql 을 SQLDeveloper에서 실행
+ - 테이블 생성 및 테스트 데이터 삽입
 
-ALTER TABLE THREAD
-    ADD CONSTRAINT THREAD_REF_VIDEO
-    FOREIGN KEY(Thread_id) REFERENCES VIDEO(Video_id);
+2. 환경 설정 수정
+ - src/main/resources/application.properties 파일 수정 (api 키가 포함되어있기에 github 에는 올라가있지 않음)
+ - spring.datasource.url, username, password → 본인 환경에 맞게 설정 (예시 : jdbc:oracle:thin:@localhost:1521:orcl)
+ - youtube.api.key: 제공된 값 사용 가능 (일일 10,000회 제한)
 
-CREATE TABLE GUESTBOOK(
-    Guestbook_id VARCHAR2(29) NOT NULL,
-    Created_at DATE NOT NULL,
-    PRIMARY KEY(Guestbook_id)
-);
+3. 서버 실행
+ - Team6-Phase4.zip 압축을 해제한뒤 talkbox 디렉토리를 Existing Maven Projects 로 Import (이클립스 기준)
+ - TubetalkApplication.java 실행
+ - 기본 포트: http://localhost:8080
 
-ALTER TABLE GUESTBOOK
-    ADD CONSTRAINT GUESTBOOK_REF_USER
-    FOREIGN KEY(Guestbook_id) REFERENCES APP_USER(User_id);
+4. maven 오류 발생 시
+ - mvn install 실행
+ - pom.xml 내 모든 dependency 자동 설치
 
-CREATE TABLE USER_COMMENT(
-    Comment_id VARCHAR2(26) NOT NULL,
-    User_id VARCHAR2(29) NOT NULL,
-    Thread_id VARCHAR2(11),
-    Guestbook_id VARCHAR2(29),
-    Content CLOB NOT NULL,
-    Created_at DATE NOT NULL,
-    Updated_at DATE,
-    Like_count NUMBER NOT NULL,
-    Dislike_count NUMBER NOT NULL,
-    PRIMARY KEY(Comment_id)
-);
+================================
+주요 제공 기능 설명
+================================
 
-ALTER TABLE USER_COMMENT
-    ADD CONSTRAINT UC_REF_USER
-    FOREIGN KEY(User_id) REFERENCES APP_USER(User_id);
+1. 인기 영상 노출
+ - 최근 24시간 동안 댓글이 가장 많이 달린 스레드를 메인화면에 표시
 
-ALTER TABLE USER_COMMENT
-    ADD CONSTRAINT UC_REF_THREAD
-    FOREIGN KEY(Thread_id) REFERENCES THREAD(Thread_id);
+2. 검색 기능
+ - 키워드 기반 스레드 검색
+ - 유튜브 주소 입력 시 존재하는 스레드 이동 또는 신규 스레드 생성
 
-ALTER TABLE USER_COMMENT
-    ADD CONSTRAINT UC_REF_GUESTBOOK
-    FOREIGN KEY(Guestbook_id) REFERENCES GUESTBOOK(Guestbook_id);
+3. 스레드 및 방명록 기능
+ - 각 유튜브 영상에 대응하는 댓글 스레드 제공
+ - 댓글이 막힌 영상도 스레드 생성 가능
+ - 영상 embed는 정책에 따라 표시되지 않을 수 있으나 댓글 작성 가능
+ - 사용자별 댓글 공간인 방명록 기능 제공
 
-CREATE TABLE REPLY(
-    Reply_id VARCHAR2(50) NOT NULL,
-    Comment_id VARCHAR2(26) NOT NULL,
-    User_id VARCHAR2(29) NOT NULL,
-    Content CLOB NOT NULL,
-    Created_at DATE NOT NULL,
-    Updated_at DATE,
-    Like_count NUMBER NOT NULL,
-    Dislike_count NUMBER NOT NULL,
-    PRIMARY KEY(Reply_id)
-);
+4. 회원 기능
+ - 로그인/로그아웃/회원가입/정보 수정/탈퇴 지원
+ - 내 방명록 바로가기 기능 제공
 
-ALTER TABLE REPLY
-    ADD CONSTRAINT REPLY_REF_USERCOMMENT
-    FOREIGN KEY(Comment_id) REFERENCES USER_COMMENT(Comment_id);
+5. 댓글 및 답글 기능
+ - 로그인 시 댓글/답글 작성 가능
+ - 좋아요/싫어요 반응 기능
+ - 우선순위에 따른 정렬 기능
+ - 사용자 ID 클릭 → 해당 유저 방명록 이동
 
-ALTER TABLE REPLY
-    ADD CONSTRAINT REPLY_REF_USER
-    FOREIGN KEY(User_id) REFERENCES APP_USER(User_id);
+6. 관리자(Admin) 페이지
+ - ID를 admin 으로 가입 시 자동으로 관리자 권한 부여
+ - /admin 페이지에서 통계 및 관리 기능 제공
 
+================================
+유튜브 데모 영상 링크
+================================
 
-CREATE TABLE REACTION (
-    User_id    VARCHAR2(29) NOT NULL,
-    Target_id  VARCHAR2(50) NOT NULL,  -- Comment_id 또는 Reply_id
-    Reaction_type CHAR(1) NOT NULL,    -- 'L' = Like, 'D' = Dislike
-    Created_at DATE NOT NULL,
-    PRIMARY KEY(User_id, Target_id)
-);
+https://www.youtube.com/watch?v=APHYcJZry5U
 
-ALTER TABLE REACTION
-    ADD CONSTRAINT REACTION_REF_USER
-    FOREIGN KEY(User_id) REFERENCES APP_USER(User_id);
-
-====================================================================
-
+================================
+프로젝트 구현 설명
+================================
 1. 패키지(폴더)별 역할
 
 1.1 config (설정)
@@ -266,7 +222,7 @@ ALTER TABLE REACTION
      역할: YouTube API 연동
      주요 기능: 비디오/채널 정보 조회
 
-================================================================================
+
 2. 주요 파일별 상세 역할
 
 2.1 ReactionService.java
@@ -302,6 +258,3 @@ ALTER TABLE REACTION
    - getOrCreateThreadData(): 스레드 생성/조회 (@Transactional)
      비디오가 없으면 YouTube API 호출 후 Video, Channel, Thread 생성
      여러 사용자가 동시에 접속해도 중복 생성 방지
-
-
-
