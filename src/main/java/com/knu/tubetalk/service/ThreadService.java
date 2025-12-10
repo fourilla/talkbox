@@ -44,8 +44,11 @@ public class ThreadService {
             // YouTube API 호출 → Video + Channel 정보
             YoutubeService.VideoAndChannel data = youtubeService.getVideoAndChannel(videoId);
             
-            // DB 저장
-            channelDao.save(data.getChannel());
+            String channelId = data.getChannel().getChannelId();
+            if (channelDao.findById(channelId).isEmpty()) {
+                channelDao.save(data.getChannel());
+            }
+
             videoDao.save(data.getVideo());
             
             ThreadEntity thread = new ThreadEntity(videoId, LocalDateTime.now(), 0L);
