@@ -1,19 +1,14 @@
 package com.knu.tubetalk.service;
 
 import com.google.gson.Gson;
-
 import com.google.gson.reflect.TypeToken;
 import com.knu.tubetalk.domain.Channel;
 import com.knu.tubetalk.domain.Video;
 import com.knu.tubetalk.exception.YoutubeApiException;
-
-import jakarta.annotation.PostConstruct;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -34,7 +29,7 @@ public class YoutubeService {
     private String API_KEY;
 
     /**
-     * Video ID로 비디오 + 채널 정보 모두 조회
+     * Video ID → Video + Channel 정보 조회
      */
     public VideoAndChannel getVideoAndChannel(String videoId) throws YoutubeApiException {
         try {
@@ -45,7 +40,7 @@ public class YoutubeService {
             // 2. Channel 정보 조회
             Map<String, Object> channelInfo = getChannelInfo(channelId);
 
-            // 3. Domain 객체 생성
+            // 3. Domain 생성
             Video video = createVideoFromMap(videoInfo);
             Channel channel = createChannelFromMap(channelId, channelInfo);
 
@@ -55,19 +50,21 @@ public class YoutubeService {
             throw e;
         } catch (Exception e) {
             e.printStackTrace();
-            throw new YoutubeApiException("존재하지 않는 비디오 ID입니다: " + videoId + " - " + e.getMessage());
+            throw new YoutubeApiException(
+                    "존재하지 않는 비디오 ID입니다: " + videoId + " - " + e.getMessage()
+            );
         }
     }
 
     /**
-     * Video API 호출
+     * Video API 호출 + safe 파싱 적용
      */
     private Map<String, Object> fetchVideoInfo(String videoId) throws Exception {
         String charset = "UTF-8";
         String query = String.format(
-            "part=snippet,statistics&id=%s&key=%s",
-            URLEncoder.encode(videoId, charset),
-            URLEncoder.encode(API_KEY, charset)
+                "part=snippet,statistics&id=%s&key=%s",
+                URLEncoder.encode(videoId, charset),
+                URLEncoder.encode(API_KEY, charset)
         );
 
         URL url = new URL(BASE_VIDEO_URL + "?" + query);
@@ -83,7 +80,6 @@ public class YoutubeService {
                 sb.append(line);
             }
 
-            // JSON 파싱
             Map<String, Object> root = GSON.fromJson(sb.toString(), new TypeToken<Map<String, Object>>(){}.getType());
             List<Map<String, Object>> items = (List<Map<String, Object>>) root.get("items");
 
@@ -92,34 +88,34 @@ public class YoutubeService {
             }
 
             Map<String, Object> item = items.get(0);
-            Map<String, Object> snippet = (Map<String, Object>) item.get("snippet");
-            Map<String, Object> statistics = (Map<String, Object>) item.get("statistics");
+            Map<String, Object> snippet = safeMap(item.get("snippet"));
+            Map<String, Object> statistics = safeMap(item.get("statistics"));
 
-            long likeCount = Long.parseLong((String) statistics.get("likeCount"));
-            long commentCount = Long.parseLong((String) statistics.get("commentCount"));
+            long likeCount = safeLong(statistics.get("likeCount"));
+            long commentCount = safeLong(statistics.get("commentCount"));
 
             return Map.of(
-                "videoId", videoId,
-                "channelId", snippet.get("channelId"),
-                "title", snippet.get("title"),
-                "description", snippet.get("description"),
-                "uploadedAt", snippet.get("publishedAt"),
-                "likeCount", likeCount,
-                "dislikeCount", -1L,  // YouTube API에서 제공 안 함
-                "commentCount", commentCount
+                    "videoId", videoId,
+                    "channelId", safeString(snippet.get("channelId")),
+                    "title", safeString(snippet.get("title")),
+                    "description", safeString(snippet.get("description")),
+                    "uploadedAt", safeString(snippet.get("publishedAt")),
+                    "likeCount", likeCount,
+                    "dislikeCount", -1L,
+                    "commentCount", commentCount
             );
         }
     }
 
     /**
-     * Channel API 호출
+     * Channel API 호출 + safe 파싱
      */
     private Map<String, Object> getChannelInfo(String channelId) throws Exception {
         String charset = "UTF-8";
         String apiUrl = BASE_CHANNEL_URL +
-            "?part=snippet" +
-            "&id=" + URLEncoder.encode(channelId, charset) +
-            "&key=" + URLEncoder.encode(API_KEY, charset);
+                "?part=snippet" +
+                "&id=" + URLEncoder.encode(channelId, charset) +
+                "&key=" + URLEncoder.encode(API_KEY, charset);
 
         URL url = new URL(apiUrl);
         HttpURLConnection conn = (HttpURLConnection) url.openConnection();
@@ -139,12 +135,11 @@ public class YoutubeService {
                 throw new YoutubeApiException("Channel not found: " + channelId);
             }
 
-            Map<String, Object> item = items.get(0);
-            Map<String, Object> snippet = (Map<String, Object>) item.get("snippet");
+            Map<String, Object> snippet = safeMap(items.get(0).get("snippet"));
 
             return Map.of(
-                "channelTitle", snippet.get("title"),
-                "channelDescription", snippet.get("description")
+                    "channelTitle", safeString(snippet.get("title")),
+                    "channelDescription", safeString(snippet.get("description"))
             );
         }
     }
@@ -154,14 +149,14 @@ public class YoutubeService {
      */
     private Video createVideoFromMap(Map<String, Object> videoInfo) {
         return new Video(
-            (String) videoInfo.get("videoId"),
-            (String) videoInfo.get("channelId"),
-            (String) videoInfo.get("title"),
-            (String) videoInfo.get("description"),
-            parseDateTime((String) videoInfo.get("uploadedAt")),
-            (Long) videoInfo.get("likeCount"),
-            (Long) videoInfo.get("dislikeCount"),
-            (Long) videoInfo.get("commentCount")
+                safeString(videoInfo.get("videoId")),
+                safeString(videoInfo.get("channelId")),
+                safeString(videoInfo.get("title")),
+                safeString(videoInfo.get("description")),
+                parseDateTime(safeString(videoInfo.get("uploadedAt"))),
+                (Long) videoInfo.get("likeCount"),
+                (Long) videoInfo.get("dislikeCount"),
+                (Long) videoInfo.get("commentCount")
         );
     }
 
@@ -170,22 +165,52 @@ public class YoutubeService {
      */
     private Channel createChannelFromMap(String channelId, Map<String, Object> channelInfo) {
         return new Channel(
-            channelId,
-            (String) channelInfo.get("channelTitle"),
-            (String) channelInfo.get("channelDescription")
+                channelId,
+                safeString(channelInfo.get("channelTitle")),
+                safeString(channelInfo.get("channelDescription"))
         );
     }
 
     /**
-     * ISO 날짜 파싱
+     * ISO 날짜 파싱 (null 대비)
      */
     private LocalDateTime parseDateTime(String publishedAt) {
-        DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
-        return LocalDateTime.parse(publishedAt.replace("Z", "+00:00"), formatter);
+        try {
+            if (publishedAt == null || publishedAt.isEmpty()) return LocalDateTime.now();
+            return LocalDateTime.parse(publishedAt.replace("Z", "+00:00"), DateTimeFormatter.ISO_DATE_TIME);
+        } catch (Exception e) {
+            return LocalDateTime.now();
+        }
     }
 
     /**
-     * DTO: Video + Channel 함께 반환
+     * =============================
+     *      SAFE PARSING UTILS
+     * =============================
+     */
+    private long safeLong(Object value) {
+        try {
+            if (value == null) return 0L;
+            if (value instanceof Number) return ((Number) value).longValue();
+            return Long.parseLong(value.toString());
+        } catch (Exception e) {
+            return 0L;
+        }
+    }
+
+    private String safeString(Object value) {
+        return value == null ? "" : value.toString();
+    }
+
+    private Map<String, Object> safeMap(Object value) {
+        if (value instanceof Map) {
+            return (Map<String, Object>) value;
+        }
+        return Map.of();
+    }
+
+    /**
+     * DTO 반환
      */
     public static class VideoAndChannel {
         private final Video video;
