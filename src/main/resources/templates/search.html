@@ -288,15 +288,17 @@
         <a href="/main" class="logo">TubeTalk</a>
         <div class="nav-links">
             <a href="/main">메인</a>
-            <sec:authorize access="isAuthenticated()">
-                <a th:href="@{'/guestbook?userId=' + ${#authentication.principal.username}}">내 방명록</a>
-                <a href="/update">회원정보 수정</a>
+            
+            <th:block th:if="${#authorization.expression('isAuthenticated()')}">
+                <a th:href="@{'/guestbook?userId=' + ${#authentication.name}}">내 방명록</a>
+                <a href="/userInfoChange">회원정보 수정</a>
                 <a href="/logout">로그아웃</a>
-            </sec:authorize>
-            <sec:authorize access="!isAuthenticated()">
+            </th:block>
+            
+            <th:block th:if="${#authorization.expression('!isAuthenticated()')}">
                 <a href="/login">로그인</a>
                 <a href="/join">회원가입</a>
-            </sec:authorize>
+            </th:block>
         </div>
     </nav>
 
